@@ -1,0 +1,525 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Look and Answer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@600;800&display=swap">
+<style>
+/* Layout: one picture card centred like a page in a workbook; questions stack under it, one unlocks at a time. */
+:root {
+  --bg: #eef4f1;
+  --paper: #ffffff;
+  --ink: #1f2a33;
+  --muted: #5b6b74;
+  --line: #d3e0da;
+  --accent: #2f6fd6;
+  --accent-ink: #ffffff;
+  --good: #1f8a4c;
+  --good-soft: #e3f5ea;
+  --bad: #c8412f;
+  --bad-soft: #fde9e5;
+  --locked: #f3f6f5;
+  --display: "Baloo 2", "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Andika", "Verdana", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131b1f; --paper: #1c262b; --ink: #eef3f2; --muted: #a3b3b9; --line: #30403f;
+    --accent: #6ea2ff; --accent-ink: #0d1a2e; --good: #5fd18f; --good-soft: #17352a;
+    --bad: #ff8a78; --bad-soft: #3d1f1a; --locked: #182125; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131b1f; --paper: #1c262b; --ink: #eef3f2; --muted: #a3b3b9; --line: #30403f;
+  --accent: #6ea2ff; --accent-ink: #0d1a2e; --good: #5fd18f; --good-soft: #17352a;
+  --bad: #ff8a78; --bad-soft: #3d1f1a; --locked: #182125; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 20px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: 2rem; margin: 0; line-height: 1.1; letter-spacing: .01em; }
+.count { font-family: var(--display); font-weight: 600; font-size: 1.1rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--line); }
+.dot.done { background: var(--good); }
+.dot.now { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+.card { background: var(--paper); border: 2px solid var(--line); border-radius: 22px; overflow: hidden; }
+.picture { display: block; width: 100%; height: auto; aspect-ratio: 400 / 260; max-width: 100%; background: #dfeee8; }
+.picture img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qs { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.q { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 16px; border: 2px solid var(--line); }
+.q.correct { border-color: var(--good); background: var(--good-soft); }
+.q-head { display: flex; align-items: center; gap: 10px; }
+.q-text { font-family: var(--display); font-weight: 600; font-size: 1.45rem; line-height: 1.2; flex: 1; min-width: 0; }
+.q-num { display: block; font-family: var(--body); font-weight: 400; font-size: .95rem; color: var(--muted); }
+.say { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; display: grid; place-items: center; }
+.say svg { width: 22px; height: 22px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row input {
+  flex: 1 1 200px; min-width: 0; font: inherit; font-size: 1.4rem; padding: 10px 14px; border-radius: 12px;
+  border: 2px solid var(--line); background: var(--paper); color: var(--ink);
+}
+.row input:focus { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px; border-color: var(--accent); }
+.q.wrong input { border-color: var(--bad); }
+.q.correct input { border-color: var(--good); background: transparent; }
+.btn {
+  font-family: var(--display); font-weight: 800; font-size: 1.3rem; border: 0; border-radius: 12px; padding: 10px 22px;
+  background: var(--accent); color: var(--accent-ink); cursor: pointer;
+}
+.btn:focus-visible, .say:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.btn.ghost { background: transparent; color: var(--muted); border: 2px solid var(--line); font-size: 1rem; padding: 6px 14px; }
+.feedback { font-size: 1.15rem; min-height: 0; }
+.feedback:empty { display: none; }
+.feedback.bad { color: var(--bad); background: var(--bad-soft); padding: 8px 12px; border-radius: 10px; }
+.feedback.bad b { font-size: 1.35rem; color: var(--ink); }
+.feedback.good { color: var(--good); font-weight: 700; }
+.next-wrap { display: flex; justify-content: center; padding: 0 20px 22px; }
+.next-wrap .btn { font-size: 1.5rem; padding: 14px 34px; }
+footer { display: flex; justify-content: flex-end; }
+.finish { text-align: center; padding: 36px 20px; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.finish h2 { font-family: var(--display); font-size: 2.2rem; margin: 0; text-wrap: balance; }
+.finish p { margin: 0; font-size: 1.3rem; }
+.big-star { font-size: 4rem; line-height: 1; }
+@media (max-width: 480px) {
+  body { font-size: 18px; }
+  h1 { font-size: 1.6rem; }
+  .qs { padding: 14px; }
+  .q-text { font-size: 1.25rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .q.new { animation: pop .35s ease-out; }
+  @keyframes pop { from { transform: translateY(8px); opacity: .4; } to { transform: none; opacity: 1; } }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Look and Answer</h1>
+    <span class="count" id="count"></span>
+    <div class="dots" id="dots" aria-hidden="true"></div>
+  </header>
+  <main id="main"></main>
+  <footer><button class="btn ghost" id="restart" type="button">Start again</button></footer>
+</div>
+
+<script>
+/* =====================================================================
+   PICTURES AND QUESTIONS  (edit here)
+   ---------------------------------------------------------------------
+   Each picture is one { ... } block in the PICTURES list.
+     draw:      the built-in drawing (leave as it is, or delete it)
+     photo:     use your own picture instead of "draw", for example
+                photo: "data:image/jpeg;base64,...."   (Claude can add photos for you)
+     questions: the questions for this picture, in order.
+        q: the question the child sees
+        a: the answers that count as correct. The FIRST one is shown
+           when the child makes a mistake. Capital letters, "a/an/the"
+           and full stops do not matter, and "3" = "three".
+   ===================================================================== */
+const PICTURES = [
+  { // 1 park
+    draw: [["sky","#a8dcff"],["sun",345,48],["cloud",95,50,1],["cloud",230,35,.8],["ground","#8fd17a",165],
+           ["tree",50,178,1],["tree",115,172,.9],["tree",368,186,.85],["emoji","🐕",210,192,66],["ball","#e53935",292,212,16]],
+    questions: [
+      { q: "Where is the dog?", a: ["in the park","park","at the park","on the grass","in a park"] },
+      { q: "How many trees are there?", a: ["3"] },
+      { q: "What color is the ball?", a: ["red"] },
+    ]
+  },
+  { // 2 beach
+    draw: [["sky","#9ed8ff"],["sun",60,45],["cloud",250,45,.9],["water","#3aa0d8",118,60],["ground","#f3d48b",172],
+           ["emoji","⛵",140,104,46],["emoji","⛵",300,110,38],["emoji","👧",210,206,66],["emoji","🐚",320,232,30]],
+    questions: [
+      { q: "Where is the girl?", a: ["on the beach","at the beach","beach","on the sand","by the sea","at the seaside"] },
+      { q: "How many boats can you see?", a: ["2"] },
+      { q: "What color is the sea?", a: ["blue"] },
+    ]
+  },
+  { // 3 living room
+    draw: [["wall","#f6e7c8"],["window",150,30,100,80],["ground","#c99a6b",190],["rug","#6c8ebf",200,218,160,24],
+           ["emoji","🐈",105,184,74],["emoji","🐕",295,184,74]],
+    questions: [
+      { q: "Who is on the left?", a: ["a cat","cat","kitten"] },
+      { q: "Who is on the right?", a: ["a dog","dog","puppy"] },
+      { q: "How many animals are there?", a: ["2"] },
+    ]
+  },
+  { // 4 balloons
+    draw: [["sky","#bfe6ff"],["cloud",60,40,.8],["ground","#9bd77f",205],
+           ["balloon","#e53935",130,95,16,206,182],["balloon","#2f6fd6",168,70,16,206,182],["balloon","#ffd02b",210,52,26,206,182],
+           ["balloon","#2fa84f",252,72,16,206,182],["balloon","#ff8a1f",288,98,16,206,182],["emoji","👦",200,212,74]],
+    questions: [
+      { q: "How many balloons are there?", a: ["5"] },
+      { q: "What color is the biggest balloon?", a: ["yellow"] },
+      { q: "Who has the balloons?", a: ["a boy","boy"] },
+    ]
+  },
+  { // 5 farm
+    draw: [["sky","#aee0ff"],["sun",50,45],["ground","#a5d672",160],["barn",300,160],["fence",168],
+           ["emoji","🐄",100,178,74],["emoji","🐖",215,196,58],["emoji","🐔",280,234,34],["emoji","🐔",322,222,34],
+           ["emoji","🐔",360,238,34],["emoji","🐔",240,240,34]],
+    questions: [
+      { q: "Where are the animals?", a: ["on the farm","on a farm","farm","at the farm"] },
+      { q: "How many chickens are there?", a: ["4"] },
+      { q: "Which animal is pink?", a: ["the pig","pig"] },
+    ]
+  },
+  { // 6 kitchen
+    draw: [["wall","#ffeccf"],["window",40,25,90,70],["ground","#d9b48a",215],["table",50,160,300,"#a86b3c"],
+           ["emoji","🍎",94,140,36],["emoji","🍎",138,140,36],["emoji","🍎",182,140,36],
+           ["emoji","🍌",230,140,36],["emoji","🍌",272,140,36],["cup","#2f6fd6",315,160]],
+    questions: [
+      { q: "How many apples are there?", a: ["3"] },
+      { q: "Where are the apples?", a: ["on the table","table"] },
+      { q: "What color are the bananas?", a: ["yellow"] },
+      { q: "What color is the cup?", a: ["blue"] },
+    ]
+  },
+  { // 7 night
+    draw: [["sky","#1d2a5a"],["moon",330,55,"#1d2a5a"],["star",60,40,8],["star",195,135,7],["star",185,35,9],["star",235,95,7],
+           ["star",265,40,8],["star",380,120,7],["ground","#2e4d3a",205],["tree",110,215,1.25],["emoji","🦉",110,126,44]],
+    questions: [
+      { q: "Is it day or night?", a: ["night","it is night","it's night","nighttime"] },
+      { q: "How many stars can you see?", a: ["6"] },
+      { q: "Who is in the tree?", a: ["an owl","owl","a bird","bird"] },
+    ]
+  },
+  { // 8 snow
+    draw: [["sky","#d9ecff"],["snowflakes"],["ground","#f7fbff",170],["emoji","☃️",200,160,96],
+           ["emoji","👦",80,202,66],["emoji","👧",320,202,66]],
+    questions: [
+      { q: "Who is on the left?", a: ["a boy","boy"] },
+      { q: "Who is in the middle?", a: ["a snowman","snowman","snow man"] },
+      { q: "What color is the snow?", a: ["white"] },
+    ]
+  },
+  { // 9 street
+    draw: [["sky","#b8e2ff"],["buildings"],["road",170],["car","#e53935",80,232],["car","#2f6fd6",200,232],["car","#2fa84f",320,232]],
+    questions: [
+      { q: "How many cars are there?", a: ["3"] },
+      { q: "What color is the car on the left?", a: ["red"] },
+      { q: "What color is the car in the middle?", a: ["blue"] },
+    ]
+  },
+  { // 10 garden
+    draw: [["sky","#c4ecff"],["sun",360,40],["ground","#7fcf6f",165],
+           ["flower","#e53935",50,222],["flower","#e53935",95,232],["flower","#e53935",140,222],
+           ["flower","#ffd02b",200,232],["flower","#9b59d0",255,222],["flower","#9b59d0",300,232],["flower","#9b59d0",345,222],
+           ["emoji","🐝",200,184,30],["emoji","🦋",150,85,42]],
+    questions: [
+      { q: "How many flowers are there?", a: ["7"] },
+      { q: "Who is on the yellow flower?", a: ["a bee","bee"] },
+      { q: "What color is the flower on the left?", a: ["red"] },
+    ]
+  },
+  { // 11 pond
+    draw: [["sky","#b3e1ff"],["cloud",320,40,.9],["ground","#8ccf6c",120],["pond",200,190,185,62],
+           ["emoji","🦆",150,178,58],["pad",292,208],["emoji","🐸",292,194,42],["emoji","🐟",85,218,28],["emoji","🐟",225,228,28]],
+    questions: [
+      { q: "Where is the duck?", a: ["in the water","in the pond","on the water","on the pond","water","pond"] },
+      { q: "What color is the frog?", a: ["green"] },
+      { q: "How many fish are there?", a: ["2"] },
+    ]
+  },
+  { // 12 classroom
+    draw: [["wall","#fdf1d6"],["board",40,26,210,110,"#2f6b4f"],["ground","#c8a47c",200],["emoji","👩",325,92,72],
+           ["emoji","👦",90,196,52],["emoji","👧",200,196,52],["emoji","👦",310,196,52],
+           ["desk",60,215],["desk",170,215],["desk",280,215]],
+    questions: [
+      { q: "Who is next to the board?", a: ["the teacher","teacher","a woman","woman"] },
+      { q: "What color is the board?", a: ["green"] },
+      { q: "How many children are there?", a: ["3"] },
+    ]
+  },
+  { // 13 birthday
+    draw: [["wall","#ffe3ef"],["flags"],["ground","#d8a37a",225],["table",60,190,280,"#b97a4c"],["cake",190,190,5,"#ff8fb8"],
+           ["emoji","🎁",300,168,42]],
+    questions: [
+      { q: "What is on the table?", a: ["a cake","cake","a birthday cake","birthday cake"] },
+      { q: "How many candles are on the cake?", a: ["5"] },
+      { q: "What color is the cake?", a: ["pink"] },
+    ]
+  },
+  { // 14 zoo
+    draw: [["sky","#bfe7ff"],["sun",200,40],["ground","#d7c28a",178],["fence",182],
+           ["emoji","🦁",78,190,72],["emoji","🐘",200,182,86],["emoji","🦒",325,165,98]],
+    questions: [
+      { q: "Who is in the middle?", a: ["an elephant","elephant"] },
+      { q: "Who is on the right?", a: ["a giraffe","giraffe"] },
+      { q: "What color is the elephant?", a: ["grey","gray"] },
+    ]
+  },
+  { // 15 bedroom
+    draw: [["wall","#e6e9ff"],["window",290,30,80,70],["ground","#b98b62",210],["bed",60,210,260,"#3f7fd9"],
+           ["ball","#ff8a1f",190,192,16],["emoji","🧸",230,100,54]],
+    questions: [
+      { q: "Where is the teddy bear?", a: ["on the bed"] },
+      { q: "Where is the ball?", a: ["under the bed","below the bed"] },
+      { q: "What color is the blanket?", a: ["blue"] },
+    ]
+  },
+  { // 16 under the sea
+    draw: [["sky","#1f7fbf"],["bubbles"],["ground","#e9d39b",225],["seaweed"],["emoji","🐳",95,80,84],
+           ["emoji","🐠",205,118,34],["emoji","🐠",250,150,34],["emoji","🐠",185,170,34],["emoji","🐙",315,196,62]],
+    questions: [
+      { q: "Who is on the left?", a: ["a whale","whale"] },
+      { q: "How many fish are there?", a: ["3"] },
+      { q: "Where is the octopus?", a: ["in the sea","under the sea","under the water","in the water","on the sand","sea","at the bottom of the sea"] },
+    ]
+  },
+  { // 17 rain
+    draw: [["sky","#9fb2c4"],["cloud",80,40,1.1,"#7d8a99"],["cloud",300,35,1.2,"#7d8a99"],["ground","#6fae5f",195],["puddle",300,230],
+           ["rain"],["umbrella","#8e44c9",200,118],["emoji","👧",200,184,62]],
+    questions: [
+      { q: "What is the weather like?", a: ["rainy","it is rainy","it's rainy","raining","it is raining","it's raining","rain"] },
+      { q: "What color is the umbrella?", a: ["purple","violet"] },
+      { q: "Who is under the umbrella?", a: ["a girl","girl"] },
+    ]
+  },
+  { // 18 forest
+    draw: [["sky","#c9ecff"],["cloud",200,40,.8],["ground","#7dbb5b",170],["tree",40,182,1],["tree",360,186,.95],["tree",300,176,.75],
+           ["emoji","🐻",125,186,66],["emoji","🍄",190,228,32],["emoji","🐇",240,218,42],["emoji","🐇",290,226,42]],
+    questions: [
+      { q: "How many rabbits are there?", a: ["2"] },
+      { q: "Which animal is big and brown?", a: ["the bear","bear"] },
+      { q: "What color is the mushroom?", a: ["red"] },
+    ]
+  },
+  { // 19 football
+    draw: [["sky","#a7dbff"],["cloud",90,40,.9],["ground","#4fae4f",150],["pitch"],["goal",290,98,90,62],
+           ["emoji","👦",140,186,76],["emoji","⚽",205,228,32]],
+    questions: [
+      { q: "What is the boy playing?", a: ["football","soccer"] },
+      { q: "How many balls can you see?", a: ["1"] },
+      { q: "Where is the boy?", a: ["on the football field","on the field","on the pitch","on the grass","field","pitch","in the field","in the park","at the stadium"] },
+    ]
+  },
+  { // 20 grandparents
+    draw: [["wall","#f7e2c6"],["window",160,25,90,62],["ground","#b7835b",210],["sofa",60,210,270,"#f08a3c"],
+           ["emoji","👵",145,146,66],["emoji","👴",250,146,66],["emoji","🐈",368,192,46]],
+    questions: [
+      { q: "Who is on the left?", a: ["grandma","grandmother","granny","an old woman","old lady","a woman"] },
+      { q: "What color is the sofa?", a: ["orange"] },
+      { q: "Where is the cat?", a: ["on the floor","floor","next to the sofa","near the sofa","by the sofa"] },
+    ]
+  },
+];
+/* ===================== end of pictures and questions ===================== */
+
+/* ---------- drawing helpers (pictures are 400 x 260) ---------- */
+const W = 400, H = 260;
+const D = {
+  sky: c => `<rect width="${W}" height="${H}" fill="${c}"/>`,
+  wall: c => `<rect width="${W}" height="${H}" fill="${c}"/>`,
+  ground: (c, y) => `<rect y="${y}" width="${W}" height="${H - y}" fill="${c}"/>`,
+  water: (c, y, h) => `<rect y="${y}" width="${W}" height="${h}" fill="${c}"/><path d="M0 ${y+12} q20 -6 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0" stroke="#ffffff" stroke-opacity=".5" stroke-width="2" fill="none"/>`,
+  sun: (x, y) => `<circle cx="${x}" cy="${y}" r="36" fill="#fff3a6" opacity=".6"/><circle cx="${x}" cy="${y}" r="26" fill="#ffd23f"/>`,
+  moon: (x, y, bg) => `<circle cx="${x}" cy="${y}" r="26" fill="#fff3b0"/><circle cx="${x + 12}" cy="${y - 8}" r="23" fill="${bg}"/>`,
+  cloud: (x, y, s = 1, c = "#ffffff") => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><ellipse cx="0" cy="8" rx="44" ry="16"/><circle cx="-16" cy="0" r="18"/><circle cx="12" cy="-6" r="22"/></g>`,
+  star: (x, y, r, c = "#ffe066") => {
+    let p = [];
+    for (let i = 0; i < 10; i++) { const a = Math.PI / 5 * i - Math.PI / 2, rr = i % 2 ? r * .45 : r; p.push((x + rr * Math.cos(a)).toFixed(1) + "," + (y + rr * Math.sin(a)).toFixed(1)); }
+    return `<polygon points="${p.join(" ")}" fill="${c}"/>`;
+  },
+  tree: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})"><rect x="-7" y="-50" width="14" height="50" fill="#8a5a33"/><circle cx="0" cy="-72" r="34" fill="#3f9d4a"/><circle cx="-20" cy="-58" r="20" fill="#4bb058"/><circle cx="20" cy="-60" r="20" fill="#358a40"/></g>`,
+  flower: (c, x, y) => {
+    let s = `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - 30}" stroke="#2f8a3a" stroke-width="4"/><ellipse cx="${x + 8}" cy="${y - 12}" rx="7" ry="3.5" fill="#2f8a3a"/>`;
+    for (let i = 0; i < 5; i++) { const a = Math.PI * 2 / 5 * i; s += `<circle cx="${(x + 9 * Math.cos(a)).toFixed(1)}" cy="${(y - 30 + 9 * Math.sin(a)).toFixed(1)}" r="7" fill="${c}"/>`; }
+    return s + `<circle cx="${x}" cy="${y - 30}" r="5" fill="#ffb300"/>`;
+  },
+  ball: (c, x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/><circle cx="${x - r * .35}" cy="${y - r * .35}" r="${r * .3}" fill="#ffffff" opacity=".45"/>`,
+  balloon: (c, x, y, r, sx, sy) => `<path d="M${x} ${y + r * 1.25} Q${(x + sx) / 2 + 8} ${(y + sy) / 2} ${sx} ${sy}" stroke="#555" stroke-width="1.5" fill="none"/><ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 1.22}" fill="${c}"/><path d="M${x - 4} ${y + r * 1.32} L${x + 4} ${y + r * 1.32} L${x} ${y + r * 1.18}Z" fill="${c}"/><ellipse cx="${x - r * .35}" cy="${y - r * .4}" rx="${r * .22}" ry="${r * .32}" fill="#ffffff" opacity=".45"/>`,
+  car: (c, x, y) => `<g transform="translate(${x} ${y})"><rect x="-44" y="-34" width="88" height="24" rx="8" fill="${c}"/><path d="M-26 -34 L-16 -54 L18 -54 L28 -34Z" fill="${c}"/><path d="M-20 -36 L-13 -50 L-1 -50 L-1 -36Z M3 -36 L3 -50 L15 -50 L22 -36Z" fill="#cfefff"/><circle cx="-24" cy="-8" r="10" fill="#222"/><circle cx="24" cy="-8" r="10" fill="#222"/><circle cx="-24" cy="-8" r="4" fill="#bbb"/><circle cx="24" cy="-8" r="4" fill="#bbb"/></g>`,
+  window: (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#bfe6ff" stroke="#ffffff" stroke-width="6"/><line x1="${x + w / 2}" y1="${y}" x2="${x + w / 2}" y2="${y + h}" stroke="#ffffff" stroke-width="4"/>`,
+  rug: (c, x, y, rx, ry) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}"/>`,
+  table: (x, y, w, c) => `<rect x="${x}" y="${y}" width="${w}" height="12" rx="3" fill="${c}"/><rect x="${x + 12}" y="${y + 12}" width="10" height="${H - y}" fill="${c}"/><rect x="${x + w - 22}" y="${y + 12}" width="10" height="${H - y}" fill="${c}"/>`,
+  cup: (c, x, y) => `<path d="M${x - 16} ${y - 34} L${x + 16} ${y - 34} L${x + 12} ${y} L${x - 12} ${y}Z" fill="${c}"/><path d="M${x + 15} ${y - 28} q14 2 10 14 q-3 7 -12 6" stroke="${c}" stroke-width="5" fill="none"/>`,
+  barn: (x, y) => `<rect x="${x}" y="${y - 70}" width="80" height="70" fill="#c0392b"/><path d="M${x - 8} ${y - 68} L${x + 40} ${y - 104} L${x + 88} ${y - 68}Z" fill="#8e2a20"/><rect x="${x + 26}" y="${y - 40}" width="28" height="40" fill="#f5e6c8"/>`,
+  fence: y => { let s = `<rect y="${y - 22}" width="${W}" height="5" fill="#d6b48a"/><rect y="${y - 10}" width="${W}" height="5" fill="#d6b48a"/>`; for (let x = 8; x < W; x += 34) s += `<rect x="${x}" y="${y - 32}" width="8" height="32" fill="#c9a274"/>`; return s; },
+  snowflakes: () => { let s = ""; const pts = [[30,30],[80,70],[140,25],[180,95],[250,50],[300,100],[350,30],[380,80],[60,120],[220,130],[120,140],[340,140]]; for (const [x, y] of pts) s += `<circle cx="${x}" cy="${y}" r="4" fill="#ffffff"/>`; return s; },
+  buildings: () => `<rect x="0" y="70" width="80" height="110" fill="#9aa9b8"/><rect x="85" y="40" width="70" height="140" fill="#b4c0cc"/><rect x="160" y="85" width="90" height="95" fill="#8d9cac"/><rect x="255" y="55" width="65" height="125" fill="#a7b4c1"/><rect x="325" y="90" width="75" height="90" fill="#95a4b4"/>`,
+  road: y => { let s = `<rect y="${y}" width="${W}" height="${H - y}" fill="#5a5f66"/><rect y="${y}" width="${W}" height="6" fill="#c9ccd0"/>`; for (let x = 10; x < W; x += 60) s += `<rect x="${x}" y="${y + 70}" width="34" height="5" fill="#ffffff"/>`; return s; },
+  pond: (x, y, rx, ry) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#4aa3df"/><ellipse cx="${x}" cy="${y - 6}" rx="${rx - 30}" ry="${ry - 24}" fill="#ffffff" opacity=".12"/>`,
+  pad: (x, y) => `<ellipse cx="${x}" cy="${y}" rx="36" ry="12" fill="#3f9d4a"/>`,
+  board: (x, y, w, h, c) => `<rect x="${x - 6}" y="${y - 6}" width="${w + 12}" height="${h + 12}" rx="4" fill="#8a5a33"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/><text x="${x + w / 2}" y="${y + h / 2 + 14}" text-anchor="middle" font-family="Andika, Verdana, sans-serif" font-size="40" fill="#ffffff">A B C</text>`,
+  desk: (x, y) => `<rect x="${x}" y="${y}" width="60" height="10" fill="#b07a49"/><rect x="${x + 6}" y="${y + 10}" width="6" height="${H - y}" fill="#8a5a33"/><rect x="${x + 48}" y="${y + 10}" width="6" height="${H - y}" fill="#8a5a33"/>`,
+  flags: () => { let s = `<path d="M0 18 Q200 50 400 18" stroke="#888" stroke-width="2" fill="none"/>`; const cs = ["#e53935","#2f6fd6","#ffd02b","#2fa84f"]; for (let i = 0; i < 10; i++) { const x = 20 + i * 38, y = 18 + 32 * (1 - Math.pow((x - 200) / 200, 2)) * .9; s += `<path d="M${x - 12} ${y} L${x + 12} ${y} L${x} ${y + 24}Z" fill="${cs[i % 4]}"/>`; } return s; },
+  cake: (x, y, n, c) => {
+    let s = `<ellipse cx="${x}" cy="${y}" rx="70" ry="8" fill="#ffffff" opacity=".9"/><rect x="${x - 56}" y="${y - 56}" width="112" height="54" rx="8" fill="${c}"/><path d="M${x - 56} ${y - 46} q14 12 28 0 t28 0 t28 0 t28 0 L${x + 56} ${y - 50} Q${x + 56} ${y - 56} ${x + 48} ${y - 56} L${x - 48} ${y - 56} Q${x - 56} ${y - 56} ${x - 56} ${y - 50}Z" fill="#ffffff"/>`;
+    for (let i = 0; i < n; i++) { const cx = x - 40 + i * (80 / (n - 1)); s += `<rect x="${cx - 3}" y="${y - 80}" width="6" height="24" fill="#7fb6ff"/><path d="M${cx} ${y - 94} q6 7 0 12 q-6 -5 0 -12Z" fill="#ff9800"/>`; }
+    return s;
+  },
+  bed: (x, y, w, c) => `<rect x="${x}" y="${y - 120}" width="16" height="120" rx="4" fill="#8a5a33"/><rect x="${x}" y="${y - 72}" width="${w}" height="30" fill="#8a5a33"/><rect x="${x + 4}" y="${y - 42}" width="12" height="42" fill="#8a5a33"/><rect x="${x + w - 16}" y="${y - 42}" width="12" height="42" fill="#8a5a33"/><rect x="${x + 16}" y="${y - 84}" width="${w - 16}" height="14" fill="#ffffff"/><ellipse cx="${x + 46}" cy="${y - 88}" rx="26" ry="11" fill="#ffffff" stroke="#d8dbe8"/><rect x="${x + 84}" y="${y - 90}" width="${w - 84}" height="26" rx="6" fill="${c}"/>`,
+  bubbles: () => { let s = ""; for (const [x, y, r] of [[160,40,5],[170,25,3],[290,60,6],[300,40,4],[360,100,5],[40,160,4]]) s += `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="2"/>`; return s; },
+  seaweed: () => { let s = ""; for (const x of [30, 60, 370, 245]) s += `<path d="M${x} 232 q-10 -20 0 -40 t0 -40" stroke="#2f9d5a" stroke-width="7" fill="none" stroke-linecap="round"/>`; return s; },
+  rain: () => { let s = ""; for (let i = 0; i < 46; i++) { const x = (i * 53) % W + 6, y = 60 + (i * 37) % 170; s += `<line x1="${x}" y1="${y}" x2="${x - 4}" y2="${y + 12}" stroke="#e8f3ff" stroke-width="2" stroke-linecap="round"/>`; } return s; },
+  puddle: (x, y) => `<ellipse cx="${x}" cy="${y}" rx="46" ry="9" fill="#7fb3d9"/>`,
+  umbrella: (c, x, y) => `<path d="M${x - 70} ${y} A70 52 0 0 1 ${x + 70} ${y} q-17.5 -10 -35 0 q-17.5 -10 -35 0 q-17.5 -10 -35 0 q-17.5 -10 -35 0Z" fill="${c}"/><line x1="${x}" y1="${y - 52}" x2="${x}" y2="${y + 30}" stroke="#333" stroke-width="3"/>`,
+  pitch: () => `<rect x="0" y="150" width="${W}" height="4" fill="#ffffff" opacity=".8"/><ellipse cx="60" cy="210" rx="70" ry="22" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="3"/>`,
+  goal: (x, y, w, h) => { let s = ""; for (let i = 1; i < 6; i++) s += `<line x1="${x + i * w / 6}" y1="${y}" x2="${x + i * w / 6}" y2="${y + h}" stroke="#ffffff" stroke-opacity=".6"/>`; for (let i = 1; i < 4; i++) s += `<line x1="${x}" y1="${y + i * h / 4}" x2="${x + w}" y2="${y + i * h / 4}" stroke="#ffffff" stroke-opacity=".6"/>`; return s + `<path d="M${x} ${y + h} V${y} H${x + w} V${y + h}" stroke="#ffffff" stroke-width="6" fill="none"/>`; },
+  sofa: (x, y, w, c) => `<rect x="${x + 14}" y="${y - 120}" width="${w - 28}" height="60" rx="14" fill="${c}"/><rect x="${x + 10}" y="${y - 70}" width="${w - 20}" height="40" rx="8" fill="${c}"/><rect x="${x}" y="${y - 90}" width="26" height="64" rx="10" fill="${c}"/><rect x="${x + w - 26}" y="${y - 90}" width="26" height="64" rx="10" fill="${c}"/><rect x="${x}" y="${y - 74}" width="${w}" height="6" fill="#000" opacity=".08"/><rect x="${x + 14}" y="${y - 28}" width="10" height="28" fill="#5b3a22"/><rect x="${x + w - 24}" y="${y - 28}" width="10" height="28" fill="#5b3a22"/>`,
+  emoji: (ch, x, y, s) => `<text x="${x}" y="${y}" font-size="${s}" text-anchor="middle" dominant-baseline="central" font-family="'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif">${ch}</text>`,
+};
+function drawScene(steps) {
+  return steps.map(([name, ...args]) => (D[name] ? D[name](...args) : "")).join("");
+}
+
+/* ---------- answer checking ---------- */
+const NUMS = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"];
+const FILLER = new Set(["a", "an", "the"]);
+const NEG = /\b(not|no|isn't|aren't|don't|doesn't|never)\b|n't\b/;
+function words(s) {
+  return s.toLowerCase().replace(/[’`]/g, "'").replace(/[^a-z0-9' ]+/g, " ").split(/\s+/)
+    .filter(w => w && !FILLER.has(w))
+    .map(w => (/^\d+$/.test(w) && NUMS[+w] ? NUMS[+w] : w));
+}
+function isCorrect(input, answers) {
+  const got = words(input);
+  if (!got.length) return false;
+  const gotStr = " " + got.join(" ") + " ";
+  const numsGot = got.filter(w => NUMS.includes(w));
+  return answers.some(ans => {
+    const want = words(String(ans));
+    if (!want.length) return false;
+    const wantStr = " " + want.join(" ") + " ";
+    if (gotStr === wantStr) return true;
+    // also accept a full sentence such as "The ball is red." or "There are three trees."
+    if (!gotStr.includes(wantStr) || NEG.test(input.toLowerCase())) return false;
+    const numsWant = want.filter(w => NUMS.includes(w));
+    if (numsWant.length && numsGot.some(n => !numsWant.includes(n))) return false;
+    return true;
+  });
+}
+
+/* ---------- speaking the question aloud ---------- */
+function say(text) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-GB"; u.rate = .85;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
+}
+const SPEAKER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>`;
+
+/* ---------- state ---------- */
+const KEY = "look-and-answer-v1";
+function shuffled(list) {
+  const a = list.slice();
+  for (let j = a.length - 1; j > 0; j--) { const k = Math.floor(Math.random() * (j + 1)); [a[j], a[k]] = [a[k], a[j]]; }
+  return a;
+}
+// pictures come in a random order; the order is saved so the child can continue later
+const newState = () => ({ pic: 0, firstTry: 0, total: 0, order: shuffled(PICTURES.map((_, i) => i)) });
+let state = newState();
+try {
+  const s = JSON.parse(localStorage.getItem(KEY));
+  const okOrder = s && Array.isArray(s.order) && s.order.length === PICTURES.length && s.order.every(n => n >= 0 && n < PICTURES.length);
+  if (okOrder && s.pic >= 0 && s.pic <= PICTURES.length) state = Object.assign(state, s);
+} catch (e) {}
+const current = () => PICTURES[state.order[state.pic]];
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+const main = document.getElementById("main");
+let currentQs = [];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function renderDots() {
+  const n = PICTURES.length;
+  document.getElementById("dots").innerHTML = PICTURES.map((_, i) =>
+    `<span class="dot ${i < state.pic ? "done" : i === state.pic ? "now" : ""}"></span>`).join("");
+  document.getElementById("count").textContent = state.pic < n ? `Picture ${state.pic + 1} of ${n}` : `All ${n} pictures done`;
+}
+
+function render(focus) {
+  renderDots();
+  if (state.pic >= PICTURES.length) return renderFinish();
+  const p = current();
+  const pic = p.photo
+    ? `<div class="picture"><img src="${esc(p.photo)}" alt="${esc(p.alt || "Picture " + (state.pic + 1))}"></div>`
+    : `<svg class="picture" viewBox="0 0 ${W} ${H}" role="img" aria-label="Picture ${state.pic + 1}">${drawScene(p.draw || [])}</svg>`;
+  main.innerHTML = `<section class="card">${pic}<div class="qs" id="qs"></div><div class="next-wrap" id="next" hidden></div></section>`;
+  // questions come in a new random order each time a picture is shown
+  currentQs = p.questions.slice();
+  for (let j = currentQs.length - 1; j > 0; j--) { const k = Math.floor(Math.random() * (j + 1)); [currentQs[j], currentQs[k]] = [currentQs[k], currentQs[j]]; }
+  addQuestion(0, focus);
+}
+
+function addQuestion(i, focus = true) {
+  const qs = document.getElementById("qs");
+  if (i >= currentQs.length) return showNext();
+  const item = currentQs[i];
+  const id = `p${state.pic}q${i}`;
+  const el = document.createElement("div");
+  el.className = "q new";
+  el.innerHTML = `
+    <div class="q-head">
+      <label class="q-text" for="${id}"><span class="q-num">Question ${i + 1} of ${currentQs.length}</span>${esc(item.q)}</label>
+      <button class="say" type="button" aria-label="Read the question aloud">${SPEAKER}</button>
+    </div>
+    <form class="row" autocomplete="off">
+      <input id="${id}" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Type your answer">
+      <button class="btn" type="submit">Check</button>
+    </form>
+    <div class="feedback" aria-live="polite"></div>`;
+  qs.appendChild(el);
+  const input = el.querySelector("input"), fb = el.querySelector(".feedback"), btn = el.querySelector(".btn");
+  let mistakes = 0;
+  el.querySelector(".say").addEventListener("click", () => say(item.q));
+  el.querySelector("form").addEventListener("submit", e => {
+    e.preventDefault();
+    if (el.classList.contains("correct")) return;
+    if (!input.value.trim()) { input.focus(); return; }
+    if (isCorrect(input.value, item.a)) {
+      el.classList.remove("wrong"); el.classList.add("correct");
+      input.readOnly = true; btn.hidden = true;
+      fb.className = "feedback good";
+      fb.textContent = mistakes ? "✓ Yes, that's right!" : "✓ Great job!";
+      state.total++; if (!mistakes) state.firstTry++; save();
+      // hide the answered question, then show the next one
+      setTimeout(() => { el.remove(); addQuestion(i + 1); }, 1000);
+    } else {
+      mistakes++;
+      el.classList.add("wrong");
+      fb.className = "feedback bad";
+      fb.innerHTML = `Not quite. The answer is: <b>${esc(item.a[0])}</b><br>Type it in the box and press Check.`;
+      input.select();
+    }
+  });
+  if (focus) input.focus({ preventScroll: i === 0 });
+}
+
+function showNext() {
+  const box = document.getElementById("next");
+  const last = state.pic === PICTURES.length - 1;
+  box.innerHTML = `<button class="btn" type="button" id="go">${last ? "Finish ★" : "Next picture →"}</button>`;
+  box.hidden = false;
+  document.getElementById("qs").innerHTML = `<p class="feedback good" style="margin:0;text-align:center">✓ All questions on this picture are done!</p>`;
+  const go = document.getElementById("go");
+  go.addEventListener("click", () => { state.pic++; save(); render(true); window.scrollTo({ top: 0 }); });
+  go.focus();
+}
+
+function renderFinish() {
+  main.innerHTML = `<section class="card finish">
+    <div class="big-star" aria-hidden="true">★</div>
+    <h2>Well done! You answered every picture.</h2>
+    <p>Right the first time: <b>${state.firstTry}</b> of <b>${state.total}</b> questions.</p>
+    <button class="btn" type="button" id="again">Play again</button>
+  </section>`;
+  document.getElementById("again").addEventListener("click", restart);
+}
+
+function restart() { state = newState(); save(); render(true); window.scrollTo({ top: 0 }); }
+document.getElementById("restart").addEventListener("click", restart);
+
+render(false);
+</script>
+
+</body></html>
