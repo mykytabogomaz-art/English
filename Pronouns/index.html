@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>He, She, It or They?</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@500;700;800&display=swap">
+<style>
+/* Layout: one centred play card — big emoji "stage", the noun under it, four chunky pronoun keys in a 2×2 grid, a 15-bead progress string on top */
+:root {
+  --bg: #F3F6FB;
+  --card: #FFFFFF;
+  --ink: #1E2A3B;
+  --muted: #5F6F86;
+  --line: #DCE3EE;
+  --stage: #EAF0F8;
+  --he: #2F74C9;
+  --she: #C8467A;
+  --it: #D9861C;
+  --they: #3E9450;
+  --good: #2E9A5B;
+  --bad: #D0473C;
+  --good-soft: #E3F5EA;
+  --bad-soft: #FBE7E5;
+  --font-display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121A26; --card: #1B2534; --ink: #EEF2F8; --muted: #9AA8BC; --line: #2C3A4F; --stage: #233046;
+    --he: #5E9BE6; --she: #E27AA3; --it: #EFA64A; --they: #66B877;
+    --good: #5CC487; --bad: #F07A6F; --good-soft: #1D3A2A; --bad-soft: #3D2321;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121A26; --card: #1B2534; --ink: #EEF2F8; --muted: #9AA8BC; --line: #2C3A4F; --stage: #233046;
+  --he: #5E9BE6; --she: #E27AA3; --it: #EFA64A; --they: #66B877;
+  --good: #5CC487; --bad: #F07A6F; --good-soft: #1D3A2A; --bad-soft: #3D2321;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0;
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px;
+  padding-block: 20px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: 1.9rem; line-height: 1; margin: 0; text-wrap: balance; }
+h1 span { color: var(--he); } h1 span + span { color: var(--she); } h1 span + span + span { color: var(--it); } h1 span + span + span + span { color: var(--they); }
+.score { font-weight: 800; font-size: 1rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.score b { color: var(--ink); font-size: 1.25rem; }
+.beads { display: flex; gap: 6px; flex-wrap: wrap; }
+.bead { width: 14px; height: 14px; border-radius: 50%; background: var(--line); transition: transform .2s; }
+.bead.now { background: var(--ink); transform: scale(1.25); }
+.bead.ok { background: var(--good); }
+.bead.no { background: var(--bad); }
+
+.card { background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 14px 16px; display: grid; gap: 12px; }
+.qno { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 800; color: var(--muted); }
+.stage { background: var(--stage); border-radius: 18px; padding: 12px 12px 10px; display: grid; justify-items: center; gap: 4px; }
+.emoji { font-size: clamp(4.2rem, 21vw, 6.8rem); line-height: 1.05; user-select: none; }
+.emoji.pop { animation: pop .35s ease-out; }
+.noun { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; line-height: 1.1; text-align: center; }
+.hear { font: inherit; font-weight: 700; font-size: .9rem; color: var(--muted); background: none; border: 2px solid var(--line); border-radius: 999px; padding: 4px 14px; cursor: pointer; }
+.hear:hover { color: var(--ink); border-color: var(--muted); }
+.prompt { margin: 0; text-align: center; font-weight: 700; font-size: 1.1rem; }
+
+.keys { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.key {
+  --c: var(--he);
+  font-family: var(--font-display); font-weight: 800; font-size: 1.8rem; line-height: 1;
+  padding: 12px 8px 10px; border-radius: 18px; cursor: pointer;
+  color: #fff; background: var(--c); border: none;
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--c) 60%, #000);
+  transition: transform .08s, box-shadow .08s, opacity .2s;
+  display: grid; gap: 2px; justify-items: center;
+}
+.key .ua { font-family: var(--font-body); font-size: .85rem; font-weight: 800; line-height: 1.2; text-align: center; opacity: .95; }
+.key small { font-family: var(--font-body); font-size: .75rem; font-weight: 700; opacity: .85; letter-spacing: .02em; }
+.key:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 0 color-mix(in srgb, var(--c) 60%, #000); }
+.key:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 1px 0 color-mix(in srgb, var(--c) 60%, #000); }
+.key:focus-visible, .btn:focus-visible, .hear:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
+.key[data-p="she"] { --c: var(--she); } .key[data-p="it"] { --c: var(--it); } .key[data-p="they"] { --c: var(--they); }
+.key:disabled { cursor: default; opacity: .35; }
+.key.right { opacity: 1; outline: 5px solid var(--good); outline-offset: 3px; }
+.key.wrong { opacity: 1; animation: shake .4s; outline: 5px solid var(--bad); outline-offset: 3px; }
+
+.feedback { border-radius: 18px; padding: 14px 16px; display: grid; gap: 4px; }
+.feedback.ok { background: var(--good-soft); }
+.feedback.no { background: var(--bad-soft); }
+.fb-title { font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; line-height: 1.1; }
+.feedback.ok .fb-title { color: var(--good); } .feedback.no .fb-title { color: var(--bad); }
+.fb-line { margin: 0; font-size: 1.05rem; }
+.fb-line .swap { font-weight: 800; }
+#fbLine { text-align: center; font-size: 1.3rem; }
+
+.btn { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; padding: 12px 20px; border-radius: 16px; border: none; cursor: pointer; background: var(--ink); color: var(--card); justify-self: stretch; }
+.btn:hover { opacity: .9; }
+
+.end { text-align: center; display: grid; gap: 12px; justify-items: center; }
+.end .big { font-family: var(--font-display); font-weight: 800; font-size: 3rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.stars { font-size: 2.6rem; letter-spacing: 6px; }
+.recap { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.recap div { background: var(--stage); border-radius: 14px; padding: 8px 4px; display: grid; justify-items: center; gap: 2px; font-weight: 800; font-size: .85rem; border: 2px solid transparent; }
+.recap div.no { border-color: var(--bad); }
+.recap span { font-size: 1.8rem; }
+.hint { font-size: .85rem; color: var(--muted); text-align: center; margin: 0; }
+
+@keyframes pop { 0% { transform: scale(.6); opacity: .2; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+@media (prefers-reduced-motion: reduce) { .emoji.pop, .key.wrong { animation: none; } .key, .bead { transition: none; } }
+@media (max-width: 380px) { .key { font-size: 1.7rem; } h1 { font-size: 1.6rem; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1><span>He</span>, <span>She</span>, <span>It</span> or <span>They</span>?</h1>
+    <div class="score" id="score">Score <b id="scoreNum">0</b> / 15</div>
+  </header>
+  <div class="beads" id="beads" aria-hidden="true"></div>
+
+  <main class="card" id="game">
+    <div class="qno" id="qno">Question 1 of 15</div>
+    <div class="stage">
+      <div class="emoji" id="emoji" role="img" aria-label="">👦</div>
+      <div class="noun" id="noun">the boy</div>
+      <button class="hear" id="hear" type="button">🔊 Listen</button>
+    </div>
+    <p class="prompt">Which word do we use?</p>
+    <div class="keys" id="keys">
+      <button class="key" id="k-he" data-p="he" type="button">He<span class="ua">чоловік або хлопець</span><small>one boy or man</small></button>
+      <button class="key" id="k-she" data-p="she" type="button">She<span class="ua">жінка або дівчина</span><small>one girl or woman</small></button>
+      <button class="key" id="k-it" data-p="it" type="button">It<span class="ua">предмети або тварини</span><small>one animal or thing</small></button>
+      <button class="key" id="k-they" data-p="they" type="button">They<span class="ua">множина</span><small>two or more</small></button>
+    </div>
+    <div class="feedback" id="feedback" hidden>
+      <p class="fb-line" id="fbLine"></p>
+    </div>
+    <button class="btn" id="next" type="button" hidden>Next ➜</button>
+  </main>
+
+  <section class="card end" id="end" hidden>
+    <div class="stars" id="stars"></div>
+    <div class="big" id="final"></div>
+    <p class="fb-line" id="praise"></p>
+    <div class="recap" id="recap"></div>
+  </section>
+
+  <p class="hint">Tip: you can also press 1, 2, 3 or 4 on the keyboard.</p>
+</div>
+
+<script>
+const QUESTIONS = [
+  { e: "👦", noun: "the boy", p: "he", s: "The boy is running.", r: "He is running." },
+  { e: "👧", noun: "the girl", p: "she", s: "The girl is reading.", r: "She is reading." },
+  { e: "🐶", noun: "the dog", p: "it", s: "The dog is barking.", r: "It is barking." },
+  { e: "👨‍👩‍👧", noun: "the family", p: "they", s: "Mum, Dad and the girl are at home.", r: "They are at home." },
+  { e: "👵", noun: "Grandma", p: "she", s: "Grandma is baking a cake.", r: "She is baking a cake." },
+  { e: "👴", noun: "Grandpa", p: "he", s: "Grandpa is sleeping.", r: "He is sleeping." },
+  { e: "⚽", noun: "the ball", p: "it", s: "The ball is round.", r: "It is round." },
+  { e: "👭", noun: "two girls", p: "they", s: "The two girls are friends.", r: "They are friends." },
+  { e: "👮‍♂️", noun: "the policeman", p: "he", s: "The policeman is helping.", r: "He is helping." },
+  { e: "👩‍🍳", noun: "the cook", p: "she", s: "The cook is making soup.", r: "She is making soup." },
+  { e: "🚗", noun: "the car", p: "it", s: "The car is red.", r: "It is red." },
+  { e: "🍎🍎🍎", noun: "three apples", p: "they", s: "The apples are sweet.", r: "They are sweet." },
+  { e: "👸", noun: "the princess", p: "she", s: "The princess is in the castle.", r: "She is in the castle." },
+  { e: "🤴", noun: "the prince", p: "he", s: "The prince is on a horse.", r: "He is on a horse." },
+  { e: "🐱", noun: "the cat", p: "it", s: "The cat is drinking milk.", r: "It is drinking milk." }
+];
+const WHY = {
+  he: "one boy or man", she: "one girl or woman",
+  it: "one animal or thing", they: "more than one"
+};
+const CHEERS = ["Great job!", "Yes! Well done!", "Super!", "Brilliant!", "You got it!", "Fantastic!"];
+const $ = id => document.getElementById(id);
+const keys = [...document.querySelectorAll(".key")];
+
+let order = [], idx = 0, score = 0, results = [], locked = false;
+
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const cap = w => w[0].toUpperCase() + w.slice(1);
+
+function speak(text) {
+  try {
+    if (!("speechSynthesis" in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-GB"; u.rate = 0.85;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function drawBeads() {
+  $("beads").innerHTML = order.map((_, i) => {
+    let c = "bead";
+    if (i < results.length) c += results[i] ? " ok" : " no";
+    else if (i === idx) c += " now";
+    return `<span class="${c}"></span>`;
+  }).join("");
+}
+
+function showQuestion() {
+  const q = order[idx];
+  locked = false;
+  $("qno").textContent = `Question ${idx + 1} of ${order.length}`;
+  const em = $("emoji");
+  em.textContent = q.e; em.setAttribute("aria-label", q.noun);
+  em.classList.remove("pop"); void em.offsetWidth; em.classList.add("pop");
+  $("noun").textContent = q.noun;
+  keys.forEach(k => { k.disabled = false; k.classList.remove("right", "wrong"); });
+  $("feedback").hidden = true; $("next").hidden = true;
+  drawBeads();
+}
+
+function answer(p) {
+  if (locked) return;
+  locked = true;
+  const q = order[idx];
+  const ok = p === q.p;
+  results.push(ok);
+  if (ok) score++;
+  $("scoreNum").textContent = score;
+  keys.forEach(k => {
+    k.disabled = true;
+    if (k.dataset.p === q.p) k.classList.add("right");
+    else if (k.dataset.p === p) k.classList.add("wrong");
+  });
+  const fb = $("feedback");
+  fb.className = "feedback " + (ok ? "ok" : "no");
+  $("fbLine").innerHTML = `<span class="swap" style="color:var(--${q.p})">${q.r}</span>`;
+  fb.hidden = false;
+  $("next").textContent = idx + 1 < order.length ? "Next ➜" : "See my score ➜";
+  $("next").hidden = false;
+  $("next").focus({ preventScroll: true });
+  drawBeads();
+  speak(q.r);
+}
+
+function finish() {
+  $("game").hidden = true;
+  $("end").hidden = false;
+  const n = order.length;
+  const starsN = score === n ? 3 : score >= 11 ? 2 : score >= 6 ? 1 : 0;
+  $("stars").textContent = "⭐".repeat(starsN) + "☆".repeat(3 - starsN);
+  $("final").textContent = `${score} / ${n}`;
+  $("praise").textContent = score === n ? "Perfect! You know all your pronouns!"
+    : score >= 11 ? "Very good! Just a few more to practise."
+    : score >= 6 ? "Good try! Play again to get even better."
+    : "Keep going! Let's practise again together.";
+  $("recap").innerHTML = order.map((q, i) =>
+    `<div class="${results[i] ? "" : "no"}"><span>${q.e}</span><em style="color:var(--${q.p});font-style:normal">${cap(q.p)}</em></div>`
+  ).join("");
+  idx = n; drawBeads();
+}
+
+function start() {
+  order = shuffle(QUESTIONS); idx = 0; score = 0; results = [];
+  $("scoreNum").textContent = 0;
+  $("end").hidden = true; $("game").hidden = false;
+  showQuestion();
+}
+
+keys.forEach(k => k.addEventListener("click", () => answer(k.dataset.p)));
+$("next").addEventListener("click", () => { idx++; idx < order.length ? showQuestion() : finish(); });
+$("hear").addEventListener("click", () => speak(order[idx] ? order[idx].noun : ""));
+document.addEventListener("keydown", e => {
+  if (!$("game").hidden && !locked && ["1","2","3","4"].includes(e.key)) answer(keys[+e.key - 1].dataset.p);
+});
+
+start();
+</script>
+</body>
+</html>
