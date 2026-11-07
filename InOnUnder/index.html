@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>In, On or Under?</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@500;700;800&display=swap">
+<style>
+/* Layout: one compact play card — an emoji "scene" (item placed in / on / under an object), the question under it, three chunky keys in a row, a 15-bead progress string on top */
+:root {
+  --bg: #F3F6FB;
+  --card: #FFFFFF;
+  --ink: #1E2A3B;
+  --muted: #5F6F86;
+  --line: #DCE3EE;
+  --stage: #EAF0F8;
+  --in: #2F74C9;
+  --on: #D9861C;
+  --under: #3E9450;
+  --good: #2E9A5B;
+  --bad: #D0473C;
+  --good-soft: #E3F5EA;
+  --bad-soft: #FBE7E5;
+  --font-display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121A26; --card: #1B2534; --ink: #EEF2F8; --muted: #9AA8BC; --line: #2C3A4F; --stage: #233046;
+    --in: #5E9BE6; --on: #EFA64A; --under: #66B877;
+    --good: #5CC487; --bad: #F07A6F; --good-soft: #1D3A2A; --bad-soft: #3D2321;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121A26; --card: #1B2534; --ink: #EEF2F8; --muted: #9AA8BC; --line: #2C3A4F; --stage: #233046;
+  --in: #5E9BE6; --on: #EFA64A; --under: #66B877;
+  --good: #5CC487; --bad: #F07A6F; --good-soft: #1D3A2A; --bad-soft: #3D2321;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0;
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px;
+  padding-block: 20px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: 1.9rem; line-height: 1; margin: 0; text-wrap: balance; }
+h1 .w-in { color: var(--in); } h1 .w-on { color: var(--on); } h1 .w-under { color: var(--under); }
+.score { font-weight: 800; font-size: 1rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.score b { color: var(--ink); font-size: 1.25rem; }
+.beads { display: flex; gap: 6px; flex-wrap: wrap; }
+.bead { width: 14px; height: 14px; border-radius: 50%; background: var(--line); transition: transform .2s; }
+.bead.now { background: var(--ink); transform: scale(1.25); }
+.bead.ok { background: var(--good); }
+.bead.no { background: var(--bad); }
+
+.card { background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 12px 14px; display: grid; gap: 9px; }
+.qno { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 800; color: var(--muted); }
+.stage { background: var(--stage); border-radius: 18px; padding: 8px 8px 6px; display: grid; justify-items: center; gap: 2px; }
+
+/* The scene: one object, one item placed in / on / under it */
+.scene { font-size: clamp(4.6rem, 22vw, 6.2rem); line-height: 1; height: 1.75em; width: 100%; user-select: none; }
+.scene span { display: block; }
+.scene .item { font-size: .52em; }
+.scene.in { display: grid; place-items: center; }
+.scene.in > span { grid-area: 1 / 1; }
+.scene.in .item { transform: translateY(-.32em); }
+.scene.in .front { clip-path: inset(46% 0 0 0); }
+.scene.on, .scene.under { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.scene.on .item { order: -1; margin-bottom: -.12em; position: relative; z-index: 1; }
+.scene.under .item { margin-top: -.02em; }
+.scene.pop { animation: pop .35s ease-out; }
+
+/* The photo: whole picture always visible, so nothing that shows in / on / under is cropped away */
+.photo { position: relative; width: 100%; height: clamp(165px, 46vw, 245px); border-radius: 14px; overflow: hidden; background: var(--card); }
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: contain; object-position: center; display: block; }
+.photo img.pop { animation: pop .35s ease-out; }
+.nophoto { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--muted); font-weight: 700; }
+.recap img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; display: block; background: var(--card); }
+.credit { font-size: .7rem; color: var(--muted); margin-top: -2px; }
+.credit a { color: inherit; }
+
+.question { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; line-height: 1.4; text-align: center; text-wrap: balance; width: 100%; min-height: 2.9em; display: grid; place-items: center; }
+.gap { display: inline-block; min-width: 3.4em; padding: 0 .3em; margin: 0 .1em; border-bottom: 4px dashed var(--muted); border-radius: 6px 6px 0 0; line-height: 1.2; vertical-align: baseline; }
+.gap:empty::before { content: "\00a0"; }
+.gap.ok { background: var(--good-soft); border-bottom: 4px solid var(--good); }
+.gap.no { background: var(--bad-soft); border-bottom: 4px solid var(--bad); }
+.hear { font: inherit; font-weight: 700; font-size: .9rem; color: var(--muted); background: none; border: 2px solid var(--line); border-radius: 999px; padding: 2px 12px; cursor: pointer; }
+.hear:hover { color: var(--ink); border-color: var(--muted); }
+
+.keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.key {
+  --c: var(--in);
+  font-family: var(--font-display); font-weight: 800; font-size: 1.8rem; line-height: 1;
+  padding: 9px 6px 8px; border-radius: 16px; cursor: pointer;
+  color: #fff; background: var(--c); border: none; min-width: 0;
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--c) 60%, #000);
+  transition: transform .08s, box-shadow .08s, opacity .2s;
+  display: grid; gap: 3px; justify-items: center;
+}
+.key .ua { font-family: var(--font-body); font-size: .85rem; font-weight: 800; line-height: 1.2; text-align: center; opacity: .95; }
+.key small { font-family: var(--font-body); font-size: .72rem; font-weight: 700; opacity: .85; }
+.key:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 0 color-mix(in srgb, var(--c) 60%, #000); }
+.key:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 1px 0 color-mix(in srgb, var(--c) 60%, #000); }
+.key:focus-visible, .btn:focus-visible, .hear:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
+.key[data-p="on"] { --c: var(--on); } .key[data-p="under"] { --c: var(--under); }
+.key:disabled { cursor: default; opacity: .35; }
+.key.right { opacity: 1; outline: 5px solid var(--good); outline-offset: 3px; }
+.key.wrong { opacity: 1; animation: shake .4s; outline: 5px solid var(--bad); outline-offset: 3px; }
+
+.feedback { border-radius: 18px; padding: 12px 16px; }
+.feedback.ok { background: var(--good-soft); }
+.feedback.no { background: var(--bad-soft); }
+.sentence { margin: 0; text-align: center; font-size: 1.3rem; font-weight: 700; }
+.sentence b { font-weight: 800; }
+
+.btn { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; padding: 8px 20px; border-radius: 14px; border: none; cursor: pointer; background: var(--ink); color: var(--card); }
+.btn:hover { opacity: .9; }
+
+.end { text-align: center; justify-items: center; }
+.end .big { font-family: var(--font-display); font-weight: 800; font-size: 3rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.stars { font-size: 2.6rem; letter-spacing: 6px; }
+.praise { margin: 0; font-size: 1.05rem; }
+.recap { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.recap div { background: var(--stage); border-radius: 14px; padding: 8px 4px; display: grid; justify-items: center; gap: 2px; font-weight: 800; font-size: .85rem; border: 2px solid transparent; }
+.recap div.no { border-color: var(--bad); }
+.recap span { font-size: 1.5rem; }
+.hint { font-size: .85rem; color: var(--muted); text-align: center; margin: 0; }
+
+@keyframes pop { 0% { transform: scale(.7); opacity: .2; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+@media (prefers-reduced-motion: reduce) { .scene.pop, .key.wrong { animation: none; } .key, .bead { transition: none; } }
+@media (max-width: 380px) { .key { font-size: 1.5rem; } h1 { font-size: 1.6rem; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1><span class="w-in">In</span>, <span class="w-on">On</span> or <span class="w-under">Under</span>?</h1>
+    <div class="score">Score <b id="scoreNum">0</b> / 15</div>
+  </header>
+  <div class="beads" id="beads" aria-hidden="true"></div>
+
+  <main class="card" id="game">
+    <div class="qno" id="qno">Question 1 of 15</div>
+    <div class="stage">
+      <div class="photo" id="photoBox"><img id="photo" alt=""><p class="nophoto" id="nophoto" hidden>The photo can't load here. Open the page in your web browser to see it.</p></div>
+      <div class="credit" id="credit">Photo: <a id="creditLink" href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a></div>
+      <div class="question" id="question">Where is the cat?</div>
+      <button class="hear" id="hear" type="button">🔊 Listen</button>
+    </div>
+    <div class="keys" id="keys">
+      <button class="key" id="k-in" data-p="in" type="button">In<span class="ua">в, всередині</span><small>inside</small></button>
+      <button class="key" id="k-on" data-p="on" type="button">On<span class="ua">на</span><small>on top</small></button>
+      <button class="key" id="k-under" data-p="under" type="button">Under<span class="ua">під</span><small>below</small></button>
+    </div>
+    <button class="btn" id="next" type="button" style="visibility:hidden" disabled>Next ➜</button>
+  </main>
+
+  <section class="card end" id="end" hidden>
+    <div class="stars" id="stars"></div>
+    <div class="big" id="final"></div>
+    <p class="praise" id="praise"></p>
+    <div class="recap" id="recap"></div>
+  </section>
+
+  <p class="hint">Tip: you can also press 1, 2 or 3 on the keyboard.</p>
+</div>
+
+<script>
+// Photos from Unsplash (free Unsplash License).
+const QUESTIONS = [
+  { i: "🐱", o: "📦", who: "the cat", where: "the box", p: "in", img: "photo-1598935888738-cd2622bcd437", by: "Timo Volz", page: "orange-tabby-cat-in-brown-cardboard-box-mrTydVjg04o" },
+  { i: "🍎", o: "🧺", who: "the apples", v: "are", where: "the basket", p: "in", img: "photo-1613061527119-56ad37b8a581", by: "Vera De", page: "red-apples-in-brown-woven-basket-4Bj27zMqNSE" },
+  { i: "🐶", o: "🧺", who: "the puppy", where: "the basket", p: "in", img: "photo-1769117329025-d6398d3d6e70", by: "Helena Lopes", page: "a-brown-and-white-puppy-sits-in-a-wicker-basket-xUgrJ9e4N_s" },
+  { i: "🥚", o: "🪺", who: "the eggs", v: "are", where: "the nest", p: "in", img: "photo-1495863367063-b9ac3e6394f7", by: "Landon Martin", page: "two-eggs-in-bird-nest-_UQgnpzyVo0" },
+  { i: "🐟", o: "🥣", who: "the fish", where: "the bowl", p: "in", img: "photo-1772213954310-a10e5eb6d29d", by: "Roah", page: "a-single-goldfish-swims-in-a-round-bowl-ESzuD-_GGxY" },
+  { i: "🐱", o: "🛏️", who: "the cat", where: "the bed", p: "on", img: "photo-1640384974326-3e72680e0fb3", by: "Ayako", page: "a-cat-sitting-on-top-of-a-bed-next-to-a-pillow-h7Dw2hF4e0A" },
+  { i: "🐦", o: "🌳", who: "the bird", where: "the branch", p: "on", img: "photo-1661797507269-c3b35cbacedf", by: "N C", page: "a-bird-sitting-on-a-tree-branch-_nE0L9U_0ng" },
+  { i: "🐶", o: "🛋️", who: "the dog", where: "the sofa", p: "on", img: "photo-1712879146804-6ff8e8b8bb52", by: "Meta Bakrate", page: "a-brown-dog-sitting-on-top-of-a-blue-couch-EOkK5dgLeug" },
+  { i: "☕", o: "🪵", who: "the cup", where: "the table", p: "on", img: "photo-1771736385651-c071580a9d78", by: "Charmil Gandhi", page: "steaming-cup-of-coffee-on-a-wooden-table-MK60jE_6zXU" },
+  { i: "🍒", o: "🎂", who: "the cherry", where: "the cake", p: "on", img: "photo-1627935817583-a8d4531ccc62", by: "tanmay", page: "white-cake-with-red-cherry-on-top-okkDM8fQM7c" },
+  { i: "🐶", o: "🪑", who: "the dog", where: "the table", p: "under", img: "photo-1727532727212-a810e45fb804", by: "Yevhen Stienin", page: "a-brown-and-white-dog-laying-under-a-wooden-table-7gvzNlBhb8I" },
+  { i: "🐱", o: "🪑", who: "the cat", where: "the table", p: "under", img: "photo-1758228147088-840f9bfeeffd", by: "Mushvig Niftaliyev", page: "a-cat-rests-under-a-table-on-a-patterned-rug-cwZfm7GJ7is" },
+  { i: "👩", o: "☂️", who: "the woman", where: "the umbrella", p: "under", img: "photo-1748695115555-f8d3d221f12e", by: "morefun_boy", page: "a-woman-stands-under-a-clear-umbrella-ynLbrUkQQFY" },
+  { i: "🐑", o: "🌳", who: "the sheep", v: "are", where: "the tree", p: "under", img: "photo-1537718305322-e7922be230f8", by: "Lasse Møller", page: "white-sheeps-standing-under-brown-tree-1ZuRw77hjfk" },
+  { i: "⛵", o: "🌉", who: "the boat", where: "the bridge", p: "under", img: "photo-1714462549734-2555979e412e", by: "Leo_Visions", page: "a-boat-is-going-under-a-yellow-bridge-dVuZ9OY-R4A" }
+];
+const imgUrl = (q, w) => `https://images.unsplash.com/${q.img}?w=${w}&q=75&auto=format&fit=max`;
+const verb = q => q.v || "is";
+const $ = id => document.getElementById(id);
+const keys = [...document.querySelectorAll(".key")];
+const cap = w => w[0].toUpperCase() + w.slice(1);
+let order = [], idx = 0, score = 0, results = [], locked = false;
+
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function speak(text) {
+  try {
+    if (!("speechSynthesis" in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-GB"; u.rate = 0.85;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function drawBeads() {
+  $("beads").innerHTML = order.map((_, i) => {
+    let c = "bead";
+    if (i < results.length) c += results[i] ? " ok" : " no";
+    else if (i === idx) c += " now";
+    return `<span class="${c}"></span>`;
+  }).join("");
+}
+
+function showQuestion() {
+  const q = order[idx];
+  locked = false;
+  $("qno").textContent = `Question ${idx + 1} of ${order.length}`;
+  const img = $("photo");
+  img.hidden = false; $("nophoto").hidden = true;
+  img.onerror = () => { img.hidden = true; $("nophoto").hidden = false; };
+  img.classList.remove("pop");
+  img.alt = `${q.who} and ${q.where}`;
+  img.src = imgUrl(q, 800);
+  void img.offsetWidth; img.classList.add("pop");
+  $("creditLink").textContent = `${q.by} / Unsplash`;
+  $("creditLink").href = `https://unsplash.com/photos/${q.page}`;
+  const nextQ = order[idx + 1];
+  if (nextQ) { const pre = new Image(); pre.src = imgUrl(nextQ, 800); }
+  $("question").innerHTML = `<span>${cap(q.who)} ${verb(q)} <span class="gap" id="gap"></span> ${q.where}.</span>`;
+  keys.forEach(k => { k.disabled = false; k.classList.remove("right", "wrong"); });
+  $("next").style.visibility = "hidden"; $("next").disabled = true;
+  drawBeads();
+}
+
+function answer(p) {
+  if (locked) return;
+  locked = true;
+  const q = order[idx];
+  const ok = p === q.p;
+  results.push(ok);
+  if (ok) score++;
+  $("scoreNum").textContent = score;
+  keys.forEach(k => {
+    k.disabled = true;
+    if (k.dataset.p === q.p) k.classList.add("right");
+    else if (k.dataset.p === p) k.classList.add("wrong");
+  });
+  const gap = $("gap");
+  gap.textContent = q.p;
+  gap.style.color = `var(--${q.p})`;
+  gap.className = "gap " + (ok ? "ok" : "no");
+  $("next").textContent = idx + 1 < order.length ? "Next ➜" : "See my score ➜";
+  $("next").style.visibility = "visible"; $("next").disabled = false;
+  $("next").focus({ preventScroll: true });
+  drawBeads();
+  speak(`${cap(q.who)} ${verb(q)} ${q.p} ${q.where}.`);
+}
+
+function finish() {
+  $("game").hidden = true;
+  $("end").hidden = false;
+  const n = order.length;
+  const starsN = score === n ? 3 : score >= 11 ? 2 : score >= 6 ? 1 : 0;
+  $("stars").textContent = "⭐".repeat(starsN) + "☆".repeat(3 - starsN);
+  $("final").textContent = `${score} / ${n}`;
+  $("praise").textContent = score === n ? "Perfect! You know in, on and under!"
+    : score >= 11 ? "Very good! Just a few more to practise."
+    : score >= 6 ? "Good try! Play again to get even better."
+    : "Keep going! Let's practise again together.";
+  $("recap").innerHTML = order.map((q, i) =>
+    `<div class="${results[i] ? "" : "no"}"><img src="${imgUrl(q, 200)}" alt="${q.who} ${q.p} ${q.where}" loading="lazy"><em style="color:var(--${q.p});font-style:normal">${cap(q.p)}</em></div>`
+  ).join("");
+  idx = n; drawBeads();
+}
+
+function start() {
+  order = shuffle(QUESTIONS); idx = 0; score = 0; results = [];
+  $("scoreNum").textContent = 0;
+  $("end").hidden = true; $("game").hidden = false;
+  showQuestion();
+}
+
+keys.forEach(k => k.addEventListener("click", () => answer(k.dataset.p)));
+$("next").addEventListener("click", () => { idx++; idx < order.length ? showQuestion() : finish(); });
+$("hear").addEventListener("click", () => { const q = order[idx]; if (q) speak(locked ? `${cap(q.who)} ${verb(q)} ${q.p} ${q.where}.` : `${cap(q.who)} ${verb(q)}, , ${q.where}.`); });
+document.addEventListener("keydown", e => {
+  if (!$("game").hidden && !locked && ["1","2","3"].includes(e.key)) answer(keys[+e.key - 1].dataset.p);
+});
+
+start();
+</script>
+</body>
+</html>
