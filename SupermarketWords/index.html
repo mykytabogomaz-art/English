@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Supermarket Word Match</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: an aisle — a shelf of picture tiles above a rail of hanging price tags */
+:root {
+  --bg: #e8f3ef;          /* aisle floor mint */
+  --shelf: #ffffff;
+  --shelf-edge: #2f6f5e;  /* shelf rail green */
+  --ink: #17332b;
+  --muted: #557268;
+  --tag: #ffd84d;         /* price-tag yellow */
+  --tag-ink: #2a2200;
+  --good: #2e9e5b;
+  --bad: #d64545;
+  --pick: #1f6fd1;
+  --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10201b; --shelf: #1b3029; --shelf-edge: #4fae92; --ink: #e6f2ee; --muted: #9dbbb1;
+    --tag: #f2c933; --tag-ink: #241c00; --good: #4cc77f; --bad: #ff6b6b; --pick: #6aa8ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10201b; --shelf: #1b3029; --shelf-edge: #4fae92; --ink: #e6f2ee; --muted: #9dbbb1;
+  --tag: #f2c933; --tag-ink: #241c00; --good: #4cc77f; --bad: #ff6b6b; --pick: #6aa8ff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(1.9rem, 6vw, 2.8rem); line-height: 1; margin: 0; text-wrap: balance; }
+h1 span { color: var(--shelf-edge); }
+.lead { margin: 6px 0 0; color: var(--muted); font-size: 1.05rem; }
+.score { font-family: var(--display); font-weight: 800; font-size: 1.15rem; background: var(--shelf); border: 2px solid var(--shelf-edge); border-radius: 999px; padding: 6px 16px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.label { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; font-size: .82rem; color: var(--muted); margin: 0 0 8px; }
+
+/* Shelf of pictures */
+.shelf {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+  padding: 14px; background: var(--shelf); border-radius: 14px;
+  border-bottom: 10px solid var(--shelf-edge);
+}
+@media (min-width: 700px) { .shelf { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.pic {
+  appearance: none; border: 3px solid transparent; background: var(--bg); border-radius: 12px;
+  padding: 8px 6px 6px; cursor: pointer; display: grid; gap: 4px; justify-items: center;
+  font: inherit; color: inherit; transition: transform .15s, border-color .15s;
+}
+.pic svg { width: 100%; max-width: 110px; aspect-ratio: 1; display: block; }
+.pic .caption { font-family: var(--body); font-weight: 700; font-size: 1.05rem; min-height: 1.4em; color: var(--good); }
+.pic:hover { transform: translateY(-2px); }
+.pic.selected { border-color: var(--pick); transform: translateY(-3px); }
+.pic.done { border-color: var(--good); cursor: default; transform: none; }
+
+/* Rail of price tags */
+.rail { display: flex; flex-wrap: wrap; gap: 14px 12px; justify-content: center; padding-top: 6px; border-top: 4px dashed color-mix(in srgb, var(--shelf-edge) 40%, transparent); padding-block: 16px 4px; }
+.tag {
+  appearance: none; border: 0; cursor: pointer; position: relative;
+  font-family: var(--body); font-weight: 700; font-size: 1.3rem; color: var(--tag-ink);
+  background: var(--tag); padding: 12px 22px 12px 34px; min-width: 120px;
+  clip-path: polygon(16px 0, 100% 0, 100% 100%, 16px 100%, 0 50%);
+  transition: transform .15s, filter .15s, opacity .3s;
+}
+.tag::before { content: ""; position: absolute; left: 13px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: var(--bg); }
+.tag:hover { transform: rotate(-2deg); }
+.tag.selected { filter: drop-shadow(0 0 0 var(--pick)); outline: none; transform: translateY(-4px) rotate(-3deg); background: color-mix(in srgb, var(--tag) 70%, var(--pick)); }
+.tag.done { opacity: 0; pointer-events: none; }
+button:focus-visible { outline: 3px solid var(--pick); outline-offset: 3px; }
+.tag:focus-visible { outline: none; filter: brightness(1.08); transform: translateY(-4px); }
+
+.shake { animation: shake .4s; }
+@keyframes shake { 20%,60% { translate: -6px 0; } 40%,80% { translate: 6px 0; } }
+.pop { animation: pop .45s; }
+@keyframes pop { 40% { scale: 1.12; } }
+
+.feedback { min-height: 1.6em; text-align: center; font-family: var(--display); font-weight: 800; font-size: 1.35rem; margin: 0; }
+.feedback.ok { color: var(--good); } .feedback.no { color: var(--bad); }
+
+.win { text-align: center; background: var(--shelf); border-radius: 14px; padding: 22px 16px; border: 3px solid var(--good); display: grid; gap: 12px; justify-items: center; }
+.win h2 { font-family: var(--display); font-weight: 800; font-size: 2rem; margin: 0; color: var(--good); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.btn { font-family: var(--display); font-weight: 800; font-size: 1.1rem; border: 0; border-radius: 999px; padding: 10px 22px; cursor: pointer; background: var(--shelf-edge); color: var(--shelf); }
+.btn.ghost { background: transparent; color: var(--shelf-edge); border: 2px solid var(--shelf-edge); }
+.sound { font-size: .95rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>At the <span>Supermarket</span></h1>
+      <p class="lead">Tap a picture, then tap its word.</p>
+    </div>
+    <div class="score" id="score" aria-live="polite">Round 1 / 5</div>
+  </header>
+
+  <section>
+    <p class="label">On the shelf</p>
+    <div class="shelf" id="shelf"></div>
+  </section>
+
+  <p class="feedback" id="feedback" aria-live="polite"></p>
+
+  <section>
+    <p class="label">Price tags</p>
+    <div class="rail" id="rail"></div>
+  </section>
+
+  <div class="win" id="win" hidden>
+    <h2 id="winTitle">Round done!</h2>
+    <p id="winText" style="margin:0"></p>
+    <button class="btn" id="winBtn">Next round</button>
+  </div>
+
+  <div class="controls">
+    <label class="sound"><input type="checkbox" id="soundOn" checked> Say the word</label>
+  </div>
+</div>
+
+<script>
+const S = (body) => `<svg viewBox="0 0 100 100" aria-hidden="true">${body}</svg>`;
+const ITEMS = [
+  { word: "receipt", svg: S(`<path d="M28 10h44v74l-5.5-5-5.5 5-5.5-5-5.5 5-5.5-5-5.5 5-5.5-5-5.5 5z" fill="#ffffff" stroke="#9aa5b1" stroke-width="2.5" stroke-linejoin="round"/><rect x="36" y="18" width="28" height="4" rx="2" fill="#5c6670"/><rect x="36" y="30" width="16" height="3" rx="1.5" fill="#aab3bc"/><rect x="56" y="30" width="8" height="3" rx="1.5" fill="#aab3bc"/><rect x="36" y="38" width="20" height="3" rx="1.5" fill="#aab3bc"/><rect x="58" y="38" width="6" height="3" rx="1.5" fill="#aab3bc"/><rect x="36" y="46" width="14" height="3" rx="1.5" fill="#aab3bc"/><rect x="56" y="46" width="8" height="3" rx="1.5" fill="#aab3bc"/><path d="M36 56h28" stroke="#5c6670" stroke-width="1.5" stroke-dasharray="3 2"/><rect x="36" y="62" width="12" height="5" rx="1.5" fill="#33404b"/><rect x="54" y="62" width="10" height="5" rx="1.5" fill="#33404b"/>`) },
+  { word: "barcode", svg: S(`<rect x="12" y="24" width="76" height="52" rx="5" fill="#ffffff" stroke="#9aa5b1" stroke-width="2.5"/><g fill="#1b232b"><rect x="20" y="32" width="3" height="30"/><rect x="25" y="32" width="1.5" height="30"/><rect x="29" y="32" width="4" height="30"/><rect x="35" y="32" width="1.5" height="30"/><rect x="39" y="32" width="2.5" height="30"/><rect x="44" y="32" width="4" height="30"/><rect x="50" y="32" width="1.5" height="30"/><rect x="54" y="32" width="3" height="30"/><rect x="59" y="32" width="1.5" height="30"/><rect x="63" y="32" width="4" height="30"/><rect x="69" y="32" width="2" height="30"/><rect x="74" y="32" width="1.5" height="30"/><rect x="77" y="32" width="3" height="30"/></g><g fill="#7a858f"><rect x="20" y="66" width="8" height="4" rx="1"/><rect x="31" y="66" width="8" height="4" rx="1"/><rect x="42" y="66" width="8" height="4" rx="1"/><rect x="53" y="66" width="8" height="4" rx="1"/><rect x="64" y="66" width="8" height="4" rx="1"/></g><path d="M8 47h84" stroke="#e5383b" stroke-width="2" opacity=".8"/>`) },
+  { word: "scales", svg: S(`<path d="M18 86 24 46h52l6 40z" fill="#d7dee5" stroke="#7d8b98" stroke-width="2.5" stroke-linejoin="round"/><circle cx="50" cy="66" r="14" fill="#ffffff" stroke="#7d8b98" stroke-width="2.5"/><path d="M50 66 57 57" stroke="#e5383b" stroke-width="3" stroke-linecap="round"/><path d="M50 54v3M40 58l2 2M60 58l-2 2M38 67h3M59 67h3" stroke="#7d8b98" stroke-width="2" stroke-linecap="round"/><rect x="46" y="38" width="8" height="8" fill="#7d8b98"/><ellipse cx="50" cy="36" rx="34" ry="7" fill="#b9c5d0" stroke="#7d8b98" stroke-width="2.5"/><circle cx="40" cy="25" r="8" fill="#e5383b"/><circle cx="57" cy="24" r="9" fill="#f77f00"/>`) },
+  { word: "freezer", svg: S(`<rect x="22" y="8" width="56" height="84" rx="5" fill="#dfe9f2" stroke="#6f8aa3" stroke-width="2.5"/><rect x="28" y="14" width="44" height="34" rx="2" fill="#bfe3ff"/><rect x="28" y="54" width="44" height="32" rx="2" fill="#bfe3ff"/><rect x="64" y="22" width="4" height="18" rx="2" fill="#6f8aa3"/><rect x="64" y="62" width="4" height="16" rx="2" fill="#6f8aa3"/><g stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"><path d="M44 22v18M36 31h16M38 25l12 12M50 25 38 37"/></g><path d="M30 70h30M30 78h24" stroke="#8fc4ea" stroke-width="5" stroke-linecap="round"/>`) },
+  { word: "till", svg: S(`<rect x="34" y="12" width="32" height="16" rx="3" fill="#33404b"/><rect x="38" y="16" width="24" height="8" rx="1.5" fill="#7ee0a1"/><rect x="47" y="28" width="6" height="8" fill="#5c6670"/><path d="M16 74 24 36h52l8 38z" fill="#4a90c2" stroke="#2f6a94" stroke-width="2.5" stroke-linejoin="round"/><g fill="#ffffff"><rect x="30" y="42" width="8" height="6" rx="1.5"/><rect x="42" y="42" width="8" height="6" rx="1.5"/><rect x="54" y="42" width="8" height="6" rx="1.5"/><rect x="28" y="52" width="8" height="6" rx="1.5"/><rect x="40" y="52" width="8" height="6" rx="1.5"/><rect x="52" y="52" width="8" height="6" rx="1.5"/></g><rect x="66" y="42" width="6" height="16" rx="1.5" fill="#ffd84d"/><rect x="12" y="74" width="76" height="16" rx="3" fill="#2f6a94"/><rect x="40" y="80" width="20" height="4" rx="2" fill="#a9cbe3"/>`) },
+  { word: "wallet", svg: S(`<rect x="12" y="30" width="76" height="50" rx="8" fill="#8b5a2b"/><path d="M12 42c0-8 4-12 12-12h52c8 0 12 4 12 12" fill="#a86f38"/><rect x="62" y="46" width="28" height="20" rx="6" fill="#6e451f"/><circle cx="72" cy="56" r="4" fill="#f2c94c"/><rect x="22" y="20" width="36" height="16" rx="2" fill="#7fc89a" transform="rotate(-8 40 28)"/><path d="M20 72h30" stroke="#6e451f" stroke-width="2" stroke-dasharray="4 3"/>`) },
+  { word: "broccoli", svg: S(`<path d="M44 56h12l6 34H38z" fill="#9ccc65"/><path d="M50 60 42 74M50 60 58 76" stroke="#7cb342" stroke-width="4" stroke-linecap="round"/><g fill="#2e7d32"><circle cx="30" cy="44" r="14"/><circle cx="50" cy="32" r="17"/><circle cx="70" cy="44" r="14"/><circle cx="40" cy="52" r="12"/><circle cx="60" cy="52" r="12"/></g><g fill="#43a047"><circle cx="28" cy="40" r="5"/><circle cx="48" cy="26" r="6"/><circle cx="68" cy="40" r="5"/><circle cx="56" cy="48" r="4"/><circle cx="38" cy="48" r="4"/></g>`) },
+  { word: "pineapple", svg: S(`<path d="M50 34 40 6l10 14 4-16 2 18 12-12-8 22z" fill="#3f9e3f"/><path d="M50 34 30 16l14 6M50 34l20-14-12 12" stroke="#2d7a2d" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="50" cy="64" rx="22" ry="28" fill="#f2b632"/><g stroke="#b77d10" stroke-width="2" fill="none"><path d="M32 48 62 90M40 38 72 80M28 64l22 28M60 38 30 82M70 48 40 90M72 66 52 92"/></g>`) },
+  { word: "cucumber", svg: S(`<path d="M18 74C10 66 14 56 26 50L70 22c10-6 20-2 18 8-1 6-6 10-12 14L32 74c-6 4-10 4-14 0z" fill="#3a8f3a"/><path d="M24 64 72 32" stroke="#6cc06c" stroke-width="5" stroke-linecap="round" opacity=".7"/><g fill="#a5d6a7"><circle cx="34" cy="62" r="1.8"/><circle cx="46" cy="52" r="1.8"/><circle cx="58" cy="46" r="1.8"/><circle cx="68" cy="36" r="1.8"/><circle cx="40" cy="66" r="1.8"/><circle cx="54" cy="56" r="1.8"/></g><circle cx="84" cy="27" r="4" fill="#5d4037"/>`) },
+  { word: "cereal", svg: S(`<path d="M22 14h46l10 6v72H32l-10-6z" fill="#f4a261"/><path d="M68 14l10 6v72l-10-6z" fill="#d1803f"/><rect x="22" y="14" width="46" height="72" fill="#f4a261"/><rect x="26" y="20" width="38" height="12" rx="2" fill="#e76f51"/><path d="M28 60h34c0 12-8 18-17 18s-17-6-17-18z" fill="#ffffff"/><g fill="#e9c46a"><circle cx="34" cy="57" r="4"/><circle cx="42" cy="54" r="4"/><circle cx="50" cy="57" r="4"/><circle cx="57" cy="54" r="4"/><circle cx="46" cy="50" r="3.5"/></g><path d="M62 46 74 38" stroke="#c0c6cc" stroke-width="3" stroke-linecap="round"/>`) },
+  { word: "aubergine", svg: S(`<path d="M40 30c-14 6-26 24-22 42 4 16 22 22 36 14 16-8 22-26 18-40-2-6-6-10-10-12-8-4-14-8-22-4z" fill="#5b2a86"/><ellipse cx="34" cy="62" rx="5" ry="12" fill="#8a55b8" transform="rotate(-20 34 62)"/><path d="M40 30c6-6 18-6 24 2-4 4-6 8-6 12-6-6-12-10-18-14z" fill="#3f9e3f"/><path d="M58 26 66 12" stroke="#2d7a2d" stroke-width="5" stroke-linecap="round"/>`) },
+  { word: "mushroom", svg: S(`<path d="M40 54h20l4 30c0 4-4 6-14 6s-14-2-14-6z" fill="#f3e3cc" stroke="#c9b08c" stroke-width="2"/><path d="M12 56c0-24 18-38 38-38s38 14 38 38c0 4-3 6-8 6H20c-5 0-8-2-8-6z" fill="#b5764a"/><g fill="#d9a477"><circle cx="34" cy="38" r="5"/><circle cx="56" cy="30" r="4"/><circle cx="68" cy="46" r="5"/><circle cx="46" cy="48" r="3"/></g><path d="M20 62h60" stroke="#8a5530" stroke-width="2"/>`) },
+  { word: "avocado", svg: S(`<path d="M50 10c-12 0-16 16-22 30-6 12-12 20-12 30 0 14 14 22 34 22s34-8 34-22c0-10-6-18-12-30-6-14-10-30-22-30z" fill="#3d6b2a"/><path d="M50 18c-9 0-12 13-17 25-5 10-10 17-10 26 0 11 11 17 27 17s27-6 27-17c0-9-5-16-10-26-5-12-8-25-17-25z" fill="#c8e08a"/><circle cx="50" cy="62" r="13" fill="#8b5a2b"/><circle cx="46" cy="58" r="4" fill="#b07a48"/>`) },
+  { word: "lettuce", svg: S(`<path d="M50 88C28 86 12 66 16 44c2-14 10-22 18-24-2 14 4 32 16 40z" fill="#4f9e2f"/><path d="M50 88C72 86 88 66 84 44c-2-14-10-22-18-24 2 14-4 32-16 40z" fill="#4f9e2f"/><g fill="#4f9e2f"><circle cx="20" cy="36" r="6"/><circle cx="26" cy="26" r="6"/><circle cx="35" cy="21" r="5"/><circle cx="80" cy="36" r="6"/><circle cx="74" cy="26" r="6"/><circle cx="65" cy="21" r="5"/></g><path d="M50 86C36 80 30 60 34 40c2-12 8-24 16-28 8 4 14 16 16 28 4 20-2 40-16 46z" fill="#86c94a"/><g fill="#86c94a"><circle cx="38" cy="22" r="6"/><circle cx="44" cy="14" r="6"/><circle cx="50" cy="11" r="6"/><circle cx="56" cy="14" r="6"/><circle cx="62" cy="22" r="6"/></g><path d="M50 80c-8-10-8-30-4-46 1-6 4-10 4-10s3 4 4 10c4 16 4 36-4 46z" fill="#c8ec8a"/><g stroke="#eaf7d0" stroke-width="2.5" stroke-linecap="round" fill="none"><path d="M50 86V24M50 46l-9-8M50 46l9-8M50 62l-11-9M50 62l11-9M30 70l-8-10M70 70l8-10"/></g><ellipse cx="50" cy="88" rx="10" ry="4" fill="#eef3dc"/>`) },
+  { word: "yoghurt", svg: S(`<path d="M24 32h52l-7 54H31z" fill="#ffffff" stroke="#c7a3d6" stroke-width="2.5" stroke-linejoin="round"/><rect x="20" y="24" width="60" height="10" rx="3" fill="#b07cc6"/><path d="M28 50h44l-3 20H31z" fill="#f4c2d7"/><circle cx="42" cy="60" r="5" fill="#d6336c"/><circle cx="56" cy="60" r="5" fill="#d6336c"/><path d="M42 55c1-3 3-4 5-4M56 55c1-3 3-4 5-4" stroke="#3f9e3f" stroke-width="2" stroke-linecap="round"/>`) },
+  { word: "honey", svg: S(`<rect x="30" y="14" width="40" height="12" rx="3" fill="#8b5a2b"/><path d="M26 30c0-4 4-6 8-6h32c4 0 8 2 8 6v52c0 4-4 8-8 8H34c-4 0-8-4-8-8z" fill="#f2a900" stroke="#c98500" stroke-width="2.5"/><path d="M26 30h48c0 6-4 8-8 6-4 6-8 2-10 0-4 6-10 4-12 0-4 4-10 2-10-2-4 2-8 0-8-4z" fill="#ffd166"/><path d="M50 50l9 5v10l-9 5-9-5V55z" fill="#ffe08a" stroke="#c98500" stroke-width="2"/>`) },
+  { word: "flour", svg: S(`<path d="M24 26c0-4 4-8 8-8h36c4 0 8 4 8 8v58c0 4-3 6-6 6H30c-3 0-6-2-6-6z" fill="#f1ece3" stroke="#b7aa95" stroke-width="2.5"/><path d="M24 26l8-12h36l8 12" fill="#e2d9ca" stroke="#b7aa95" stroke-width="2.5" stroke-linejoin="round"/><path d="M50 40v34M50 46l-7-5M50 46l7-5M50 56l-8-5M50 56l8-5M50 66l-8-5M50 66l8-5" stroke="#d4a017" stroke-width="3" stroke-linecap="round" fill="none"/>`) },
+  { word: "sausages", svg: S(`<path d="M14 40c0-6 6-10 14-8l52 8c8 2 10 10 4 14-4 2-8 2-12 2l-46-4c-8-1-12-6-12-12z" fill="#c4603a"/><path d="M14 66c0-6 6-10 14-8l52 8c8 2 10 10 4 14-4 2-8 2-12 2l-46-4c-8-1-12-6-12-12z" fill="#b5532f"/><path d="M24 38l50 7M24 64l50 7" stroke="#e8916a" stroke-width="3" stroke-linecap="round"/><path d="M10 42h-4M10 68h-4M88 50h4M88 76h4" stroke="#7a3a20" stroke-width="3" stroke-linecap="round"/>`) },
+  { word: "coins", svg: S(`<g stroke="#a0720f" stroke-width="1.5"><ellipse cx="28" cy="85" rx="16" ry="5" fill="#c9921d"/><rect x="12" y="78" width="32" height="7" fill="#dca52b" stroke="none"/><ellipse cx="28" cy="78" rx="16" ry="5" fill="#f2c94c"/><ellipse cx="28" cy="77" rx="16" ry="5" fill="#c9921d"/><rect x="12" y="70" width="32" height="7" fill="#dca52b" stroke="none"/><ellipse cx="28" cy="70" rx="16" ry="5" fill="#f2c94c"/><ellipse cx="28" cy="69" rx="16" ry="5" fill="#c9921d"/><rect x="12" y="62" width="32" height="7" fill="#dca52b" stroke="none"/><ellipse cx="28" cy="62" rx="16" ry="5" fill="#f2c94c"/><ellipse cx="28" cy="61" rx="16" ry="5" fill="#c9921d"/><rect x="12" y="54" width="32" height="7" fill="#dca52b" stroke="none"/><ellipse cx="28" cy="54" rx="16" ry="5" fill="#f2c94c"/></g><circle cx="66" cy="44" r="21" fill="#f2c94c" stroke="#a0720f" stroke-width="3"/><circle cx="66" cy="44" r="15" fill="none" stroke="#dca52b" stroke-width="2"/><text x="66" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="17" fill="#8a6200">£1</text><circle cx="72" cy="78" r="13" fill="#d5dce3" stroke="#7d8b98" stroke-width="2.5"/><text x="72" y="82" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="10" fill="#4a5866">10p</text>`) },
+  { word: "shopping list", svg: S(`<rect x="20" y="12" width="46" height="78" rx="3" fill="#fff8d6" stroke="#c9b25a" stroke-width="2.5"/><g stroke="#c9b25a" stroke-width="2.5" fill="#ffffff"><rect x="26" y="24" width="8" height="8" rx="1.5"/><rect x="26" y="40" width="8" height="8" rx="1.5"/><rect x="26" y="56" width="8" height="8" rx="1.5"/><rect x="26" y="72" width="8" height="8" rx="1.5"/></g><path d="M27 28l3 3 5-7M27 44l3 3 5-7" stroke="#2e9e5b" stroke-width="2.5" fill="none" stroke-linecap="round"/><g stroke="#8a8a8a" stroke-width="3" stroke-linecap="round"><path d="M40 28h18M40 44h14M40 60h18M40 76h12"/></g><path d="M70 24 84 70l-4 10-6-8-14-46z" fill="#f4a261" stroke="#b5652a" stroke-width="2" stroke-linejoin="round"/><path d="M74 72l6 8 4-10z" fill="#33404b"/>`) },
+  { word: "watermelon", svg: S(`<path d="M8 34a42 42 0 0 0 84 0z" fill="#2e7d32"/><path d="M13 34a37 37 0 0 0 74 0z" fill="#d7efb0"/><path d="M17 34a33 33 0 0 0 66 0z" fill="#ef476f"/><g fill="#1b1b1b"><ellipse cx="34" cy="44" rx="2" ry="3.5"/><ellipse cx="50" cy="48" rx="2" ry="3.5"/><ellipse cx="66" cy="44" rx="2" ry="3.5"/><ellipse cx="42" cy="56" rx="2" ry="3.5"/><ellipse cx="58" cy="56" rx="2" ry="3.5"/><ellipse cx="50" cy="38" rx="2" ry="3.5"/></g>`) },
+  { word: "pepper", svg: S(`<path d="M30 36c-12 2-16 18-12 34 4 14 14 22 22 18 4 4 16 4 20 0 8 4 18-4 22-18 4-16 0-32-12-34-6-1-10 2-15 2s-9-3-15-2z" fill="#e63946"/><path d="M40 40c-4 12-4 30 0 44M60 40c4 12 4 30 0 44" stroke="#b81d2a" stroke-width="2.5" fill="none"/><ellipse cx="28" cy="56" rx="4" ry="10" fill="#ff8a93"/><ellipse cx="50" cy="37" rx="11" ry="4.5" fill="#3f9e3f"/><path d="M50 36c0-8 2-14 9-19" stroke="#2d7a2d" stroke-width="6" stroke-linecap="round" fill="none"/>`) },
+  { word: "onion", svg: S(`<path d="M50 20c-6 10-30 22-30 44 0 14 14 24 30 24s30-10 30-24c0-22-24-34-30-44z" fill="#c9824a"/><path d="M50 22c-4 14-16 30-16 46 0 10 6 18 16 20M50 22c4 14 16 30 16 46 0 10-6 18-16 20M50 22v66" stroke="#a5652f" stroke-width="2" fill="none"/><ellipse cx="34" cy="58" rx="4" ry="9" fill="#e3a46e"/><path d="M50 22c-2-6-2-12 2-16M50 22c2-6 6-10 10-12" stroke="#7a9e3a" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M44 88l-4 6M50 88v7M56 88l4 6" stroke="#8a6a4a" stroke-width="2" stroke-linecap="round"/>`) },
+  { word: "garlic", svg: S(`<path d="M50 14c-4 10-32 24-32 46 0 16 14 26 32 26s32-10 32-26c0-22-28-36-32-46z" fill="#f6f1e8" stroke="#cbbfae" stroke-width="2.5"/><path d="M50 18c-10 14-18 30-18 44 0 12 6 22 18 24M50 18c10 14 18 30 18 44 0 12-6 22-18 24M50 18c-2 20-2 46 0 68" stroke="#d9cdbb" stroke-width="2.5" fill="none"/><path d="M36 50c-2 10-1 20 4 28M64 50c2 10 1 20-4 28" stroke="#c9a6d6" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M42 86l-4 6M50 86v7M58 86l4 6" stroke="#b0a28c" stroke-width="2" stroke-linecap="round"/><path d="M50 14v-6" stroke="#cbbfae" stroke-width="4" stroke-linecap="round"/>`) },
+  { word: "grapes", svg: S(`<path d="M50 22c0-6 2-10 6-14" stroke="#6b4226" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M56 16c10-6 22-2 24 4-8 6-18 6-24-4z" fill="#4caf50"/><g fill="#7b3fa0" stroke="#5a2a78" stroke-width="1.5"><circle cx="38" cy="32" r="9"/><circle cx="56" cy="30" r="9"/><circle cx="47" cy="44" r="9"/><circle cx="30" cy="46" r="9"/><circle cx="64" cy="44" r="9"/><circle cx="38" cy="58" r="9"/><circle cx="56" cy="58" r="9"/><circle cx="47" cy="72" r="9"/></g><g fill="#b07fd0"><circle cx="35" cy="29" r="2.5"/><circle cx="53" cy="27" r="2.5"/><circle cx="44" cy="41" r="2.5"/><circle cx="44" cy="69" r="2.5"/></g>`) },
+  { word: "strawberries", svg: S(`<path d="M14 42c0-8 8-12 16-10 8-2 16 2 16 10 0 16-10 30-16 34-6-4-16-18-16-34z" fill="#e5383b"/><path d="M50 50c0-8 10-14 20-12 10-2 20 4 20 12 0 18-12 34-20 38-8-4-20-20-20-38z" fill="#d62839"/><path d="M20 32l4 4 6-6 6 6 4-4-4 8H24z" fill="#3f9e3f"/><path d="M58 38l5 5 7-7 7 7 5-5-5 9H63z" fill="#3f9e3f"/><g fill="#ffe08a"><circle cx="24" cy="48" r="1.5"/><circle cx="34" cy="46" r="1.5"/><circle cx="28" cy="58" r="1.5"/><circle cx="36" cy="56" r="1.5"/><circle cx="62" cy="56" r="1.5"/><circle cx="74" cy="54" r="1.5"/><circle cx="80" cy="62" r="1.5"/><circle cx="68" cy="66" r="1.5"/><circle cx="72" cy="76" r="1.5"/><circle cx="60" cy="66" r="1.5"/></g>`) },
+  { word: "cherries", svg: S(`<path d="M58 14c-6 16-20 32-28 50M58 14c0 18 6 34 14 52" stroke="#5d7a2a" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M58 14c10-8 24-6 28 0-8 10-22 10-28 0z" fill="#4caf50"/><circle cx="28" cy="72" r="15" fill="#b5172f"/><circle cx="72" cy="74" r="15" fill="#c81d3a"/><ellipse cx="22" cy="66" rx="4" ry="5" fill="#e8576d"/><ellipse cx="66" cy="68" rx="4" ry="5" fill="#ef6b80"/>`) },
+  { word: "potatoes", svg: S(`<path d="M12 60c0-14 12-22 26-22 16 0 24 8 24 20s-10 22-26 22c-14 0-24-8-24-20z" fill="#c9a06a"/><path d="M42 50c4-12 18-18 30-14 14 4 20 16 16 28-4 12-16 18-28 14-14-4-22-16-18-28z" fill="#b8894f"/><g fill="#8a6230"><circle cx="24" cy="56" r="2"/><circle cx="34" cy="68" r="2"/><circle cx="46" cy="58" r="2"/><circle cx="60" cy="46" r="2"/><circle cx="74" cy="56" r="2"/><circle cx="66" cy="68" r="2"/></g>`) },
+  { word: "frozen peas", svg: S(`<path d="M20 14h60l-4 8 4 8v52c0 4-2 6-6 6H26c-4 0-6-2-6-6V30l4-8z" fill="#3a7bd5"/><path d="M20 14h60" stroke="#2a5fa8" stroke-width="3"/><rect x="28" y="44" width="44" height="30" rx="8" fill="#e7f3ff"/><g fill="#5cb85c" stroke="#3f8f3f" stroke-width="1"><circle cx="38" cy="54" r="5"/><circle cx="50" cy="52" r="5"/><circle cx="62" cy="55" r="5"/><circle cx="44" cy="64" r="5"/><circle cx="56" cy="65" r="5"/></g><g stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"><path d="M50 22v14M43 29h14M45 24l10 10M55 24 45 34"/></g>`) },
+  { word: "ice cream", svg: S(`<path d="M32 50h36L50 94z" fill="#e0a95e"/><path d="M36 56l22 22M44 52l20 20M34 64l14 14M64 56 42 78M56 52 36 72" stroke="#b97b34" stroke-width="2"/><circle cx="40" cy="44" r="13" fill="#f7a8c4"/><circle cx="60" cy="44" r="13" fill="#fff4dc"/><circle cx="50" cy="28" r="14" fill="#8b5a2b"/><circle cx="50" cy="12" r="5" fill="#e5383b"/><g fill="#ffd84d"><rect x="44" y="24" width="4" height="2" rx="1"/><rect x="54" y="30" width="4" height="2" rx="1"/><rect x="46" y="34" width="4" height="2" rx="1"/></g>`) },
+  { word: "basket", svg: S(`<path d="M26 44c0-22 48-22 48 0" stroke="#c0392b" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M14 44h72l-8 40H22z" fill="#e74c3c"/><path d="M30 52v24M43 52v24M57 52v24M70 52v24M20 60h60M22 70h56" stroke="#ff8a7a" stroke-width="3"/>`) },
+  { word: "trolley", svg: S(`<path d="M8 22h12l10 46h46l8-34H24" stroke="#4a5866" stroke-width="5" fill="none" stroke-linejoin="round" stroke-linecap="round"/><path d="M26 34h56l-7 28H32z" fill="#8fa3b5"/><path d="M40 34v28M54 34v28M68 34v28M28 48h52" stroke="#c8d4df" stroke-width="2.5"/><circle cx="36" cy="80" r="7" fill="#2b3640"/><circle cx="70" cy="80" r="7" fill="#2b3640"/>`) }
+];
+
+const ROUND = 6;      // pictures per round
+const ROUNDS = 5;     // rounds per game
+const shelf = document.getElementById("shelf");
+const rail = document.getElementById("rail");
+const scoreEl = document.getElementById("score");
+const fb = document.getElementById("feedback");
+const win = document.getElementById("win");
+const winTitle = document.getElementById("winTitle");
+const winText = document.getElementById("winText");
+const winBtn = document.getElementById("winBtn");
+const soundOn = document.getElementById("soundOn");
+let picked = null, matched = 0, round = 0, mistakes = 0, deck = [];
+
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const cap = (w) => w[0].toUpperCase() + w.slice(1);
+
+function say(word) {
+  if (!soundOn.checked) return;
+  try {
+    const u = new SpeechSynthesisUtterance(word);
+    u.lang = "en-GB"; u.rate = 0.85;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+// Every word appears once before any word repeats; no word twice in the same round.
+function takeSet() {
+  const set = [];
+  let i = 0;
+  while (set.length < ROUND) {
+    if (i >= deck.length) { deck = deck.concat(shuffle(ITEMS)); }
+    if (set.some(s => s.word === deck[i].word)) { i++; continue; }
+    set.push(deck.splice(i, 1)[0]);
+  }
+  return set;
+}
+
+function startGame() {
+  round = 0; mistakes = 0; deck = shuffle(ITEMS);
+  nextRound();
+}
+
+function nextRound() {
+  round++;
+  const set = takeSet();
+  picked = null; matched = 0;
+  shelf.innerHTML = ""; rail.innerHTML = "";
+  win.hidden = true; fb.textContent = ""; fb.className = "feedback";
+  shuffle(set).forEach((item, n) => {
+    const b = document.createElement("button");
+    b.className = "pic"; b.dataset.word = item.word; b.dataset.kind = "pic";
+    b.setAttribute("aria-label", "Picture " + (n + 1));
+    b.innerHTML = item.svg + '<span class="caption"></span>';
+    shelf.appendChild(b);
+  });
+  shuffle(set).forEach(item => {
+    const t = document.createElement("button");
+    t.className = "tag"; t.dataset.word = item.word; t.dataset.kind = "tag";
+    t.textContent = item.word;
+    rail.appendChild(t);
+  });
+  updateScore();
+}
+
+function updateScore() { scoreEl.textContent = `Round ${round} / ${ROUNDS}`; }
+
+function roundDone() {
+  fb.textContent = "";
+  rail.innerHTML = "";
+  if (round < ROUNDS) {
+    const b = document.createElement("button");
+    b.className = "btn"; b.textContent = "Next round";
+    b.addEventListener("click", () => { nextRound(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+    rail.appendChild(b);
+    b.focus({ preventScroll: true });
+    b.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  } else {
+    winTitle.textContent = "Shopping finished! 🛒";
+    winText.textContent = `You matched ${ROUND * ROUNDS} words` + (mistakes === 0 ? " with no mistakes!" : ` with ${mistakes} ${mistakes === 1 ? "mistake" : "mistakes"}.`);
+    winBtn.textContent = "Play again";
+  }
+  win.hidden = false;
+  winBtn.focus({ preventScroll: true });
+  win.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function clearPick() { document.querySelectorAll(".selected").forEach(el => el.classList.remove("selected")); picked = null; }
+
+function handle(el) {
+  if (el.classList.contains("done") || !win.hidden) return;
+  if (!picked || picked.dataset.kind === el.dataset.kind) {
+    clearPick(); picked = el; el.classList.add("selected");
+    if (el.dataset.kind === "tag") say(el.dataset.word);
+    return;
+  }
+  const pic = el.dataset.kind === "pic" ? el : picked;
+  const tag = el.dataset.kind === "tag" ? el : picked;
+  if (pic.dataset.word === tag.dataset.word) {
+    pic.classList.add("done", "pop"); tag.classList.add("done");
+    pic.querySelector(".caption").textContent = pic.dataset.word;
+    pic.setAttribute("aria-label", pic.dataset.word + ", matched");
+    fb.textContent = "Yes! " + cap(pic.dataset.word) + "!"; fb.className = "feedback ok";
+    if (el.dataset.kind === "tag") say(pic.dataset.word);
+    matched++; updateScore(); clearPick();
+    if (matched === ROUND) setTimeout(roundDone, 600);
+  } else {
+    mistakes++;
+    [pic, tag].forEach(x => { x.classList.remove("shake"); void x.offsetWidth; x.classList.add("shake"); });
+    fb.textContent = "Try again!"; fb.className = "feedback no";
+    clearPick();
+  }
+}
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest(".pic, .tag");
+  if (el) handle(el);
+});
+document.addEventListener("animationend", (e) => e.target.classList.remove("shake", "pop"));
+winBtn.addEventListener("click", () => {
+  if (round < ROUNDS) nextRound(); else startGame();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+startGame();
+</script>
+
+</body>
+</html>
