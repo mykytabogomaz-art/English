@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Furniture Word Match</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: an aisle — a shelf of picture tiles above a rail of hanging price tags */
+:root {
+  --bg: #e9ebf4;          /* soft wall */
+  --shelf: #ffffff;
+  --shelf-edge: #8a5a3b;  /* wooden floorboard */
+  --ink: #2a2433;
+  --muted: #6b6478;
+  --tag: #a8dcd1;         /* name-tag mint */
+  --tag-ink: #10302a;
+  --good: #2e9e5b;
+  --bad: #d64545;
+  --pick: #5b4bd1;
+  --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1d1b24; --shelf: #2a2733; --shelf-edge: #c99068; --ink: #efeaf5; --muted: #aaa3b8;
+    --tag: #7cc4b4; --tag-ink: #0c2620; --good: #4cc77f; --bad: #ff6b6b; --pick: #9d90ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1d1b24; --shelf: #2a2733; --shelf-edge: #c99068; --ink: #efeaf5; --muted: #aaa3b8;
+  --tag: #7cc4b4; --tag-ink: #0c2620; --good: #4cc77f; --bad: #ff6b6b; --pick: #9d90ff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(1.9rem, 6vw, 2.8rem); line-height: 1; margin: 0; text-wrap: balance; }
+h1 span { color: var(--shelf-edge); }
+.lead { margin: 6px 0 0; color: var(--muted); font-size: 1.05rem; }
+.score { font-family: var(--display); font-weight: 800; font-size: 1.15rem; background: var(--shelf); border: 2px solid var(--shelf-edge); border-radius: 999px; padding: 6px 16px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.label { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; font-size: .82rem; color: var(--muted); margin: 0 0 8px; }
+
+/* Shelf of pictures */
+.shelf {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+  padding: 14px; background: var(--shelf); border-radius: 14px;
+  border-bottom: 10px solid var(--shelf-edge);
+}
+@media (min-width: 700px) { .shelf { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.pic {
+  appearance: none; border: 3px solid transparent; background: var(--bg); border-radius: 12px;
+  padding: 8px 6px 6px; cursor: pointer; display: grid; gap: 4px; justify-items: center;
+  font: inherit; color: inherit; transition: transform .15s, border-color .15s;
+}
+.pic svg { width: 100%; max-width: 110px; aspect-ratio: 1; display: block; }
+.pic .caption { font-family: var(--body); font-weight: 700; font-size: 1.05rem; min-height: 1.4em; color: var(--good); }
+.pic:hover { transform: translateY(-2px); }
+.pic.selected { border-color: var(--pick); transform: translateY(-3px); }
+.pic.done { border-color: var(--good); cursor: default; transform: none; }
+
+/* Rail of price tags */
+.rail { display: flex; flex-wrap: wrap; gap: 14px 12px; justify-content: center; padding-top: 6px; border-top: 4px dashed color-mix(in srgb, var(--shelf-edge) 40%, transparent); padding-block: 16px 4px; }
+.tag {
+  appearance: none; border: 0; cursor: pointer; position: relative;
+  font-family: var(--body); font-weight: 700; font-size: 1.3rem; color: var(--tag-ink);
+  background: var(--tag); padding: 12px 22px 12px 34px; min-width: 120px;
+  clip-path: polygon(16px 0, 100% 0, 100% 100%, 16px 100%, 0 50%);
+  transition: transform .15s, filter .15s, opacity .3s;
+}
+.tag::before { content: ""; position: absolute; left: 13px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: var(--bg); }
+.tag:hover { transform: rotate(-2deg); }
+.tag.selected { filter: drop-shadow(0 0 0 var(--pick)); outline: none; transform: translateY(-4px) rotate(-3deg); background: color-mix(in srgb, var(--tag) 70%, var(--pick)); }
+.tag.done { opacity: 0; pointer-events: none; }
+button:focus-visible { outline: 3px solid var(--pick); outline-offset: 3px; }
+.tag:focus-visible { outline: none; filter: brightness(1.08); transform: translateY(-4px); }
+
+.shake { animation: shake .4s; }
+@keyframes shake { 20%,60% { translate: -6px 0; } 40%,80% { translate: 6px 0; } }
+.pop { animation: pop .45s; }
+@keyframes pop { 40% { scale: 1.12; } }
+
+.feedback { min-height: 1.6em; text-align: center; font-family: var(--display); font-weight: 800; font-size: 1.35rem; margin: 0; }
+.feedback.ok { color: var(--good); } .feedback.no { color: var(--bad); }
+
+.win { text-align: center; background: var(--shelf); border-radius: 14px; padding: 22px 16px; border: 3px solid var(--good); display: grid; gap: 12px; justify-items: center; }
+.win h2 { font-family: var(--display); font-weight: 800; font-size: 2rem; margin: 0; color: var(--good); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.btn { font-family: var(--display); font-weight: 800; font-size: 1.1rem; border: 0; border-radius: 999px; padding: 10px 22px; cursor: pointer; background: var(--shelf-edge); color: var(--shelf); }
+.btn.ghost { background: transparent; color: var(--shelf-edge); border: 2px solid var(--shelf-edge); }
+.sound { font-size: .95rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Around the <span>House</span></h1>
+      <p class="lead">Tap a picture, then tap its word.</p>
+    </div>
+    <div class="score" id="score" aria-live="polite">Round 1 / 5</div>
+  </header>
+
+  <section>
+    <p class="label">In the room</p>
+    <div class="shelf" id="shelf"></div>
+  </section>
+
+  <p class="feedback" id="feedback" aria-live="polite"></p>
+
+  <section>
+    <p class="label">Name tags</p>
+    <div class="rail" id="rail"></div>
+  </section>
+
+  <div class="win" id="win" hidden>
+    <h2 id="winTitle">Round done!</h2>
+    <p id="winText" style="margin:0"></p>
+    <button class="btn" id="winBtn">Next round</button>
+  </div>
+
+  <div class="controls">
+    <label class="sound"><input type="checkbox" id="soundOn" checked> Say the word</label>
+  </div>
+</div>
+
+<script>
+const S = (body) => `<svg viewBox="0 0 100 100" aria-hidden="true">${body}</svg>`;
+const W = "#b5793f", WD = "#8a5a2b", WL = "#d9a066";
+const ITEMS = [
+  { word: "sofa", svg: S(`<rect x="14" y="30" width="72" height="30" rx="9" fill="#3f7cac"/><rect x="20" y="52" width="60" height="20" rx="4" fill="#5b95c4"/><path d="M50 52v20" stroke="#3f7cac" stroke-width="2"/><rect x="6" y="44" width="18" height="32" rx="8" fill="#336a94"/><rect x="76" y="44" width="18" height="32" rx="8" fill="#336a94"/><rect x="12" y="76" width="5" height="9" fill="#5a3a1e"/><rect x="83" y="76" width="5" height="9" fill="#5a3a1e"/>`) },
+  { word: "armchair", svg: S(`<rect x="26" y="18" width="48" height="46" rx="12" fill="#c0504d"/><rect x="30" y="56" width="40" height="18" rx="4" fill="#d66b67"/><rect x="16" y="44" width="16" height="34" rx="7" fill="#a23e3b"/><rect x="68" y="44" width="16" height="34" rx="7" fill="#a23e3b"/><rect x="20" y="78" width="5" height="10" fill="#5a3a1e"/><rect x="75" y="78" width="5" height="10" fill="#5a3a1e"/>`) },
+  { word: "wardrobe", svg: S(`<rect x="16" y="6" width="68" height="7" rx="2" fill="${WD}"/><rect x="20" y="12" width="60" height="76" fill="${W}" stroke="${WD}" stroke-width="2.5"/><path d="M50 12v76" stroke="${WD}" stroke-width="2.5"/><rect x="25" y="18" width="20" height="64" rx="2" fill="none" stroke="${WL}" stroke-width="2"/><rect x="55" y="18" width="20" height="64" rx="2" fill="none" stroke="${WL}" stroke-width="2"/><rect x="44" y="44" width="3" height="12" rx="1.5" fill="#e9c46a"/><rect x="53" y="44" width="3" height="12" rx="1.5" fill="#e9c46a"/><rect x="22" y="88" width="6" height="6" fill="${WD}"/><rect x="72" y="88" width="6" height="6" fill="${WD}"/>`) },
+  { word: "chest of drawers", svg: S(`<rect x="12" y="24" width="76" height="6" rx="2" fill="${WD}"/><rect x="15" y="30" width="70" height="54" fill="${W}"/><g fill="${WL}" stroke="${WD}" stroke-width="1.5"><rect x="19" y="34" width="62" height="10" rx="1.5"/><rect x="19" y="47" width="62" height="10" rx="1.5"/><rect x="19" y="60" width="62" height="10" rx="1.5"/><rect x="19" y="73" width="62" height="8" rx="1.5"/></g><g fill="#5a3a1e"><circle cx="36" cy="39" r="2"/><circle cx="64" cy="39" r="2"/><circle cx="36" cy="52" r="2"/><circle cx="64" cy="52" r="2"/><circle cx="36" cy="65" r="2"/><circle cx="64" cy="65" r="2"/><circle cx="36" cy="77" r="2"/><circle cx="64" cy="77" r="2"/></g><rect x="17" y="84" width="6" height="7" fill="${WD}"/><rect x="77" y="84" width="6" height="7" fill="${WD}"/>`) },
+  { word: "bookcase", svg: S(`<rect x="20" y="6" width="60" height="88" fill="${WD}"/><rect x="25" y="11" width="50" height="78" fill="#f3e6d3"/><path d="M25 32h50M25 54h50M25 76h50" stroke="${WD}" stroke-width="4"/><g><rect x="28" y="16" width="6" height="16" fill="#e63946"/><rect x="35" y="14" width="5" height="18" fill="#457b9d"/><rect x="41" y="18" width="7" height="14" fill="#2a9d8f"/><rect x="56" y="17" width="5" height="15" fill="#e9c46a"/><rect x="62" y="15" width="6" height="17" fill="#6a4c93"/><rect x="28" y="40" width="7" height="14" fill="#f4a261"/><rect x="36" y="37" width="5" height="17" fill="#264653"/><rect x="50" y="38" width="6" height="16" fill="#e76f51"/><rect x="57" y="41" width="5" height="13" fill="#8ab17d"/><rect x="63" y="38" width="8" height="16" fill="#457b9d"/><rect x="30" y="60" width="6" height="16" fill="#6a4c93"/><rect x="37" y="62" width="7" height="14" fill="#e9c46a"/><rect x="54" y="59" width="5" height="17" fill="#e63946"/><rect x="60" y="61" width="6" height="15" fill="#2a9d8f"/></g>`) },
+  { word: "bedside table", svg: S(`<rect x="22" y="42" width="56" height="7" rx="2" fill="${WD}"/><rect x="26" y="49" width="48" height="34" fill="${W}"/><rect x="30" y="53" width="40" height="11" rx="1.5" fill="${WL}" stroke="${WD}" stroke-width="1.5"/><circle cx="50" cy="58.5" r="2" fill="#5a3a1e"/><rect x="30" y="68" width="40" height="12" fill="#6e451f"/><rect x="28" y="83" width="5" height="9" fill="${WD}"/><rect x="67" y="83" width="5" height="9" fill="${WD}"/><rect x="34" y="34" width="22" height="5" fill="#457b9d"/><rect x="36" y="29" width="18" height="5" fill="#e76f51"/><path d="M62 24h8l-1 18h-6z" fill="#cfe8f5" stroke="#8fb3cc" stroke-width="1.5"/>`) },
+  { word: "desk", svg: S(`<rect x="8" y="46" width="84" height="6" rx="2" fill="${WD}"/><rect x="12" y="52" width="28" height="38" fill="${W}"/><g fill="${WL}" stroke="${WD}" stroke-width="1.5"><rect x="15" y="56" width="22" height="9" rx="1.5"/><rect x="15" y="68" width="22" height="9" rx="1.5"/><rect x="15" y="80" width="22" height="8" rx="1.5"/></g><rect x="82" y="52" width="6" height="38" fill="${W}"/><rect x="52" y="16" width="32" height="22" rx="2" fill="#33404b"/><rect x="55" y="19" width="26" height="16" fill="#8fc4ea"/><rect x="65" y="38" width="6" height="5" fill="#33404b"/><rect x="58" y="42" width="20" height="4" rx="1" fill="#33404b"/><rect x="20" y="40" width="22" height="4" rx="1" fill="#5c6670"/>`) },
+  { word: "stool", svg: S(`<path d="M38 30 28 90M62 30l10 60M50 32v56" stroke="${WD}" stroke-width="4.5" stroke-linecap="round"/><path d="M33 66h34" stroke="${WD}" stroke-width="4" stroke-linecap="round"/><ellipse cx="50" cy="30" rx="22" ry="5" fill="#a23e3b"/><ellipse cx="50" cy="26" rx="22" ry="7" fill="#c0504d"/>`) },
+  { word: "bench", svg: S(`<g fill="${W}" stroke="${WD}" stroke-width="1.5"><rect x="8" y="20" width="84" height="7" rx="2"/><rect x="8" y="31" width="84" height="7" rx="2"/><rect x="6" y="52" width="88" height="6" rx="2"/><rect x="6" y="60" width="88" height="6" rx="2"/></g><path d="M18 18v68M82 18v68M18 46l-6 40M82 46l6 40M14 52v-6h72v6" stroke="#2b3640" stroke-width="4" fill="none" stroke-linecap="round"/>`) },
+  { word: "mirror", svg: S(`<ellipse cx="50" cy="50" rx="30" ry="42" fill="#d4a72c"/><ellipse cx="50" cy="50" rx="24" ry="36" fill="#cfe8f5"/><path d="M36 34 52 18M34 50 62 22M44 66 68 42" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".85"/><circle cx="50" cy="8" r="3" fill="#a07c18"/>`) },
+  { word: "lamp", svg: S(`<path d="M34 14h32l12 32H22z" fill="#f2c94c" stroke="#c9a227" stroke-width="2" stroke-linejoin="round"/><rect x="47" y="46" width="6" height="30" fill="#7d8b98"/><ellipse cx="50" cy="80" rx="18" ry="6" fill="#5c6670"/><path d="M14 56l6-4M86 56l-6-4M30 62l3-5M70 62l-3-5" stroke="#f2c94c" stroke-width="3" stroke-linecap="round"/>`) },
+  { word: "rug", svg: S(`<rect x="14" y="26" width="72" height="48" rx="3" fill="#c0504d"/><rect x="20" y="32" width="60" height="36" rx="2" fill="none" stroke="#f2c94c" stroke-width="3"/><path d="M50 38l14 12-14 12-14-12z" fill="#2a9d8f"/><path d="M50 44l7 6-7 6-7-6z" fill="#f2c94c"/><g stroke="#e9c46a" stroke-width="2" stroke-linecap="round"><path d="M8 30h6M8 36h6M8 42h6M8 48h6M8 54h6M8 60h6M8 66h6M8 72h6M86 30h6M86 36h6M86 42h6M86 48h6M86 54h6M86 60h6M86 66h6M86 72h6"/></g>`) },
+  { word: "curtains", svg: S(`<rect x="22" y="16" width="56" height="66" fill="#cfe8f5"/><path d="M50 16v66M22 49h56" stroke="#ffffff" stroke-width="3"/><path d="M8 10h84" stroke="${WD}" stroke-width="4" stroke-linecap="round"/><circle cx="8" cy="10" r="4" fill="${WD}"/><circle cx="92" cy="10" r="4" fill="${WD}"/><path d="M12 12h22c-2 16-10 26-4 40 4 10 6 26 4 38H12z" fill="#6a4c93"/><path d="M88 12H66c2 16 10 26 4 40-4 10-6 26-4 38h22z" fill="#6a4c93"/><path d="M18 14v76M24 14v76M82 14v76M76 14v76" stroke="#8a6bb3" stroke-width="2"/><path d="M12 52h20M68 52h20" stroke="#f2c94c" stroke-width="3"/>`) },
+  { word: "cushion", svg: S(`<path d="M16 20Q50 30 84 20Q74 50 84 80Q50 70 16 80Q26 50 16 20z" fill="#e9a23b"/><path d="M28 32Q50 38 72 32Q66 50 72 68Q50 62 28 68Q34 50 28 32z" fill="none" stroke="#fff3d6" stroke-width="2.5" stroke-dasharray="4 3"/><circle cx="50" cy="50" r="5" fill="#c9821c"/><g fill="#c9821c"><circle cx="15" cy="19" r="4"/><circle cx="85" cy="19" r="4"/><circle cx="15" cy="81" r="4"/><circle cx="85" cy="81" r="4"/></g>`) },
+  { word: "bunk bed", svg: S(`<path d="M16 8v84M74 8v84" stroke="${WD}" stroke-width="5" stroke-linecap="round"/><rect x="16" y="28" width="58" height="9" fill="#ffffff" stroke="#c7ced6" stroke-width="1.5"/><rect x="30" y="30" width="44" height="8" fill="#457b9d"/><ellipse cx="23" cy="27" rx="6" ry="3.5" fill="#ffffff" stroke="#c7ced6" stroke-width="1.5"/><rect x="16" y="64" width="58" height="9" fill="#ffffff" stroke="#c7ced6" stroke-width="1.5"/><rect x="30" y="66" width="44" height="8" fill="#e76f51"/><ellipse cx="23" cy="63" rx="6" ry="3.5" fill="#ffffff" stroke="#c7ced6" stroke-width="1.5"/><path d="M16 38h58M16 74h58M16 18h58" stroke="${WD}" stroke-width="3"/><path d="M80 20v72M90 20v72M80 32h10M80 46h10M80 60h10M80 74h10M80 88h10" stroke="${W}" stroke-width="3" stroke-linecap="round"/>`) },
+  { word: "cot", svg: S(`<path d="M50 2v8M34 10h32M38 10v8M50 10v6M62 10v8" stroke="#9aa5b1" stroke-width="1.5"/><path d="M38 18l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z" fill="#f2c94c"/><path d="M53 16a5 5 0 1 0 0 10 6 6 0 0 1 0-10z" fill="#9d90ff"/><circle cx="62" cy="22" r="3.5" fill="#ef6b80"/><rect x="18" y="62" width="64" height="12" rx="2" fill="#ffffff"/><rect x="18" y="66" width="64" height="8" fill="#bde0f0"/><circle cx="60" cy="56" r="8" fill="#c68b59"/><circle cx="54" cy="49" r="3.5" fill="#c68b59"/><circle cx="66" cy="49" r="3.5" fill="#c68b59"/><ellipse cx="60" cy="59" rx="3.5" ry="2.5" fill="#e8c39e"/><circle cx="57" cy="54" r="1.2" fill="#2b2b2b"/><circle cx="63" cy="54" r="1.2" fill="#2b2b2b"/><ellipse cx="34" cy="62" rx="10" ry="4" fill="#ffffff" stroke="#c7ced6" stroke-width="1.5"/><rect x="12" y="24" width="7" height="68" rx="2" fill="#f2efe8" stroke="#b9b1a3" stroke-width="1.5"/><rect x="81" y="24" width="7" height="68" rx="2" fill="#f2efe8" stroke="#b9b1a3" stroke-width="1.5"/><circle cx="15.5" cy="22" r="4.5" fill="#f2efe8" stroke="#b9b1a3" stroke-width="1.5"/><circle cx="84.5" cy="22" r="4.5" fill="#f2efe8" stroke="#b9b1a3" stroke-width="1.5"/><rect x="19" y="32" width="62" height="5" rx="2" fill="#f2efe8" stroke="#b9b1a3" stroke-width="1.5"/><rect x="19" y="74" width="62" height="7" rx="2" fill="#f2efe8" stroke="#b9b1a3" stroke-width="1.5"/><g stroke="#e4ded2" stroke-width="3"><path d="M26 37v37M33 37v37M40 37v37M47 37v37M54 37v37M61 37v37M68 37v37M75 37v37"/></g>`) },
+  { word: "coffee table", svg: S(`<rect x="10" y="50" width="80" height="8" rx="3" fill="${WD}"/><rect x="16" y="58" width="5" height="28" fill="${W}"/><rect x="79" y="58" width="5" height="28" fill="${W}"/><rect x="16" y="74" width="68" height="4" fill="${W}"/><rect x="24" y="44" width="24" height="6" rx="1" fill="#457b9d"/><path d="M60 34h12v14a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2z" fill="#ffffff" stroke="#9aa5b1" stroke-width="2"/><path d="M72 38c5 0 5 7 0 7" stroke="#9aa5b1" stroke-width="2" fill="none"/><path d="M63 30c0-3 2-3 2-6M68 30c0-3 2-3 2-6" stroke="#c7ced6" stroke-width="1.5" fill="none" stroke-linecap="round"/>`) },
+  { word: "dressing table", svg: S(`<rect x="38" y="44" width="24" height="6" fill="${WD}"/><ellipse cx="50" cy="26" rx="18" ry="20" fill="${WD}"/><ellipse cx="50" cy="26" rx="14" ry="16" fill="#cfe8f5"/><path d="M42 20l10-8M44 30l12-10" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/><rect x="12" y="50" width="76" height="6" rx="2" fill="${WD}"/><rect x="14" y="56" width="22" height="30" fill="${W}"/><rect x="64" y="56" width="22" height="30" fill="${W}"/><g fill="${WL}" stroke="${WD}" stroke-width="1.2"><rect x="16" y="59" width="18" height="11" rx="1"/><rect x="16" y="72" width="18" height="12" rx="1"/><rect x="66" y="59" width="18" height="11" rx="1"/><rect x="66" y="72" width="18" height="12" rx="1"/></g><rect x="70" y="40" width="7" height="10" rx="2" fill="#f4a3c0"/><rect x="72" y="36" width="3" height="4" fill="#d4a72c"/>`) },
+  { word: "rocking chair", svg: S(`<path d="M10 82Q50 98 90 80" stroke="${WD}" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M30 14l2 72M66 56l-2 30M32 60h36" stroke="${W}" stroke-width="5" stroke-linecap="round"/><path d="M28 58h44" stroke="${WD}" stroke-width="7" stroke-linecap="round"/><path d="M32 22h10M32 32h10M32 42h10" stroke="${W}" stroke-width="4"/><path d="M44 14v44" stroke="${W}" stroke-width="5" stroke-linecap="round"/><path d="M30 40l40 4v14" stroke="${WD}" stroke-width="4" fill="none" stroke-linecap="round"/>`) },
+  { word: "high chair", svg: S(`<path d="M34 50 22 92M66 50l12 42M30 74h40" stroke="#e9e3d6" stroke-width="5" stroke-linecap="round"/><path d="M34 50 22 92M66 50l12 42" stroke="#9aa5b1" stroke-width="1.5" stroke-linecap="round" fill="none"/><rect x="32" y="10" width="36" height="38" rx="8" fill="#7cc4b4"/><rect x="30" y="44" width="40" height="8" rx="3" fill="#5aa594"/><path d="M26 38h44l6 6H26z" fill="#f2c94c"/><rect x="38" y="16" width="24" height="22" rx="5" fill="#a8dcd1"/>`) },
+  { word: "coat stand", svg: S(`<path d="M50 14v70" stroke="${WD}" stroke-width="5" stroke-linecap="round"/><path d="M50 20l-14-8M50 20l14-8M50 30l-12-4M50 30l12-4" stroke="${WD}" stroke-width="4" stroke-linecap="round"/><path d="M50 84 30 94M50 84l20 10M50 84v10" stroke="${WD}" stroke-width="5" stroke-linecap="round"/><path d="M62 26c10 2 14 10 14 20v26H60V36c0-4 0-8 2-10z" fill="#457b9d"/><path d="M60 40h16" stroke="#2f5f80" stroke-width="2"/><ellipse cx="36" cy="12" rx="12" ry="3" fill="#2b3640"/><rect x="29" y="2" width="14" height="10" rx="3" fill="#2b3640"/>`) },
+  { word: "clock", svg: S(`<circle cx="50" cy="50" r="40" fill="${W}"/><circle cx="50" cy="50" r="33" fill="#ffffff"/><g stroke="#33404b" stroke-width="3" stroke-linecap="round"><path d="M50 21v6M50 73v6M21 50h6M73 50h6"/></g><g stroke="#9aa5b1" stroke-width="2" stroke-linecap="round"><path d="M64.5 24.9l-2 3.4M75.1 35.5l-3.4 2M75.1 64.5l-3.4-2M64.5 75.1l-2-3.4M35.5 75.1l2-3.4M24.9 64.5l3.4-2M24.9 35.5l3.4 2M35.5 24.9l2 3.4"/></g><path d="M50 50V30M50 50l14 8" stroke="#33404b" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="50" r="3.5" fill="#e63946"/>`) },
+  { word: "fireplace", svg: S(`<rect x="8" y="18" width="84" height="8" rx="2" fill="${WD}"/><rect x="14" y="26" width="72" height="64" fill="#c9b8a6"/><g stroke="#ab9884" stroke-width="1.5"><path d="M14 38h72M14 50h16M70 50h16M14 62h16M70 62h16M14 74h16M70 74h16"/></g><path d="M30 90V52a20 20 0 0 1 40 0v38z" fill="#2b2b2b"/><path d="M50 56c-8 10-14 16-12 24 2 6 22 6 24 0 2-8-4-14-12-24z" fill="#f77f00"/><path d="M50 66c-4 6-6 9-5 13 1 3 9 3 10 0 1-4-1-7-5-13z" fill="#ffd23f"/><rect x="36" y="82" width="28" height="5" rx="2" fill="#6e451f"/><rect x="40" y="10" width="8" height="8" fill="#e76f51"/><rect x="56" y="12" width="6" height="6" rx="3" fill="#2a9d8f"/>`) },
+  { word: "blinds", svg: S(`<rect x="14" y="8" width="72" height="84" fill="#ffffff" stroke="#9aa5b1" stroke-width="3"/><rect x="12" y="6" width="76" height="8" rx="2" fill="#7d8b98"/><g fill="#d7dee5" stroke="#9aa5b1" stroke-width="1"><rect x="17" y="16" width="66" height="6" rx="1"/><rect x="17" y="24" width="66" height="6" rx="1"/><rect x="17" y="32" width="66" height="6" rx="1"/><rect x="17" y="40" width="66" height="6" rx="1"/><rect x="17" y="48" width="66" height="6" rx="1"/><rect x="17" y="56" width="66" height="6" rx="1"/><rect x="17" y="64" width="66" height="6" rx="1"/></g><rect x="17" y="72" width="66" height="17" fill="#cfe8f5"/><path d="M78 14v60" stroke="#5c6670" stroke-width="1.5"/><circle cx="78" cy="76" r="2.5" fill="#5c6670"/>`) },
+  { word: "chandelier", svg: S(`<path d="M50 2v20" stroke="#a07c18" stroke-width="3"/><path d="M14 46c4 10 20 12 36 12s32-2 36-12" stroke="#d4a72c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M50 22c-4 10-4 26 0 36 4-10 4-26 0-36z" fill="#d4a72c"/><path d="M32 52c0-12 8-20 18-24M68 52c0-12-8-20-18-24" stroke="#d4a72c" stroke-width="3" fill="none"/><g fill="#fff4dc" stroke="#d4a72c" stroke-width="1.5"><rect x="11" y="32" width="6" height="14" rx="1"/><rect x="29" y="40" width="6" height="14" rx="1"/><rect x="47" y="12" width="6" height="0"/><rect x="65" y="40" width="6" height="14" rx="1"/><rect x="83" y="32" width="6" height="14" rx="1"/></g><g fill="#ffb703"><path d="M14 24c-3 4-3 7 0 8 3-1 3-4 0-8z"/><path d="M32 32c-3 4-3 7 0 8 3-1 3-4 0-8z"/><path d="M68 32c-3 4-3 7 0 8 3-1 3-4 0-8z"/><path d="M86 24c-3 4-3 7 0 8 3-1 3-4 0-8z"/></g><g fill="#bfe3ff" stroke="#8fb3cc" stroke-width="1"><path d="M30 60l3 8-3 6-3-6z"/><path d="M50 62l3 8-3 6-3-6z"/><path d="M70 60l3 8-3 6-3-6z"/><path d="M40 62l2 6-2 5-2-5z"/><path d="M60 62l2 6-2 5-2-5z"/></g>`) },
+  { word: "filing cabinet", svg: S(`<rect x="26" y="8" width="48" height="84" rx="2" fill="#9aa5b1" stroke="#5c6670" stroke-width="2.5"/><g fill="#b9c2cb" stroke="#5c6670" stroke-width="1.5"><rect x="30" y="12" width="40" height="17" rx="1.5"/><rect x="30" y="32" width="40" height="17" rx="1.5"/><rect x="30" y="52" width="40" height="17" rx="1.5"/><rect x="30" y="72" width="40" height="17" rx="1.5"/></g><g fill="#ffffff" stroke="#5c6670" stroke-width="1"><rect x="44" y="14" width="12" height="5"/><rect x="44" y="34" width="12" height="5"/><rect x="44" y="54" width="12" height="5"/><rect x="44" y="74" width="12" height="5"/></g><g fill="#33404b"><rect x="42" y="22" width="16" height="3" rx="1.5"/><rect x="42" y="42" width="16" height="3" rx="1.5"/><rect x="42" y="62" width="16" height="3" rx="1.5"/><rect x="42" y="82" width="16" height="3" rx="1.5"/></g>`) },
+  { word: "footstool", svg: S(`<rect x="16" y="44" width="68" height="26" rx="12" fill="#6a4c93"/><rect x="16" y="44" width="68" height="12" rx="6" fill="#8a6bb3"/><g fill="#4b3470"><circle cx="34" cy="56" r="2.5"/><circle cx="50" cy="56" r="2.5"/><circle cx="66" cy="56" r="2.5"/></g><path d="M24 70l-3 14M76 70l3 14M40 70v12M60 70v12" stroke="${WD}" stroke-width="5" stroke-linecap="round"/>`) },
+  { word: "deckchair", svg: S(`<circle cx="84" cy="16" r="9" fill="#ffd23f"/><path d="M4 92h92" stroke="#e9c46a" stroke-width="5" stroke-linecap="round"/><path d="M26 12 78 92M16 92 86 48" stroke="${W}" stroke-width="5" stroke-linecap="round"/><path d="M26 12Q44 88 86 48" stroke="#e5383b" stroke-width="15" fill="none" stroke-linecap="butt"/><path d="M26 12Q44 88 86 48" stroke="#ffffff" stroke-width="9" fill="none" stroke-linecap="butt"/><path d="M26 12Q44 88 86 48" stroke="#3a6ea5" stroke-width="3.5" fill="none" stroke-linecap="butt"/><circle cx="26" cy="12" r="4" fill="${WD}"/><circle cx="86" cy="48" r="4" fill="${WD}"/><path d="M58 70 92 92" stroke="${WD}" stroke-width="4" stroke-linecap="round"/>`) },
+  { word: "hammock", svg: S(`<path d="M10 92V14M90 92V14" stroke="#6e451f" stroke-width="6" stroke-linecap="round"/><circle cx="10" cy="12" r="9" fill="#4caf50"/><circle cx="90" cy="12" r="9" fill="#4caf50"/><path d="M10 34l14 6M90 34l-14 6" stroke="#c9b08c" stroke-width="2"/><path d="M22 40Q50 86 78 40Q50 66 22 40z" fill="#2a9d8f"/><path d="M28 44Q50 74 72 44" stroke="#f2c94c" stroke-width="3" fill="none"/><path d="M36 48Q50 66 64 48" stroke="#e76f51" stroke-width="3" fill="none"/>`) },
+  { word: "shelf", svg: S(`<rect x="10" y="58" width="80" height="7" rx="2" fill="${W}" stroke="${WD}" stroke-width="1.5"/><path d="M18 65v14l12-14M82 65v14L70 65" stroke="#5c6670" stroke-width="3" fill="none" stroke-linejoin="round"/><path d="M18 46h16l-3 12H21z" fill="#c0504d"/><path d="M26 46c-6-6-6-14-2-18M26 46c4-8 10-10 14-8M26 46c-2-8-10-12-14-10" stroke="#4caf50" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="46" y="38" width="6" height="20" fill="#457b9d"/><rect x="53" y="42" width="7" height="16" fill="#e9c46a"/><rect x="61" y="36" width="5" height="22" fill="#e63946"/><path d="M74 58c-4-6-4-14 2-18h4c6 4 6 12 2 18z" fill="#7cc4b4"/>`) },
+  { word: "sideboard", svg: S(`<rect x="6" y="40" width="88" height="6" rx="2" fill="${WD}"/><rect x="9" y="46" width="82" height="34" fill="${W}"/><g fill="${WL}" stroke="${WD}" stroke-width="1.5"><rect x="13" y="50" width="23" height="26" rx="1.5"/><rect x="39" y="50" width="22" height="26" rx="1.5"/><rect x="64" y="50" width="23" height="26" rx="1.5"/></g><g fill="#5a3a1e"><rect x="32" y="58" width="2" height="10" rx="1"/><rect x="48.5" y="58" width="3" height="10" rx="1"/><rect x="66" y="58" width="2" height="10" rx="1"/></g><path d="M14 80l-2 10M86 80l2 10" stroke="${WD}" stroke-width="4" stroke-linecap="round"/><path d="M24 40c-4-4-4-14 2-18h4c6 4 6 14 2 18z" fill="#2a9d8f"/><path d="M28 22c-2-8 2-14 8-16M28 22c-4-6-10-8-14-6" stroke="#4caf50" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="60" y="24" width="20" height="16" fill="#ffffff" stroke="${WD}" stroke-width="2.5"/><path d="M63 36l5-6 4 4 3-3 3 5" stroke="#457b9d" stroke-width="2" fill="none"/>`) },
+  { word: "double bed", svg: S(`<rect x="10" y="18" width="80" height="34" rx="8" fill="${WD}"/><rect x="15" y="23" width="70" height="25" rx="5" fill="${W}"/><rect x="6" y="50" width="88" height="14" rx="3" fill="#ffffff" stroke="#c7ced6" stroke-width="1.5"/><ellipse cx="32" cy="48" rx="15" ry="7" fill="#ffffff" stroke="#c7ced6" stroke-width="1.5"/><ellipse cx="68" cy="48" rx="15" ry="7" fill="#ffffff" stroke="#c7ced6" stroke-width="1.5"/><rect x="6" y="58" width="88" height="22" rx="4" fill="#4a7fb5"/><path d="M6 64h88" stroke="#6d9bcc" stroke-width="3"/><rect x="10" y="80" width="6" height="10" fill="${WD}"/><rect x="84" y="80" width="6" height="10" fill="${WD}"/>`) }
+];
+
+const ROUND = 6;      // pictures per round
+const ROUNDS = 5;     // rounds per game
+const shelf = document.getElementById("shelf");
+const rail = document.getElementById("rail");
+const scoreEl = document.getElementById("score");
+const fb = document.getElementById("feedback");
+const win = document.getElementById("win");
+const winTitle = document.getElementById("winTitle");
+const winText = document.getElementById("winText");
+const winBtn = document.getElementById("winBtn");
+const soundOn = document.getElementById("soundOn");
+let picked = null, matched = 0, round = 0, mistakes = 0, deck = [];
+
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const cap = (w) => w[0].toUpperCase() + w.slice(1);
+
+function say(word) {
+  if (!soundOn.checked) return;
+  try {
+    const u = new SpeechSynthesisUtterance(word);
+    u.lang = "en-GB"; u.rate = 0.85;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+// Every word appears once before any word repeats; no word twice in the same round.
+function takeSet() {
+  const set = [];
+  let i = 0;
+  while (set.length < ROUND) {
+    if (i >= deck.length) { deck = deck.concat(shuffle(ITEMS)); }
+    if (set.some(s => s.word === deck[i].word)) { i++; continue; }
+    set.push(deck.splice(i, 1)[0]);
+  }
+  return set;
+}
+
+function startGame() {
+  round = 0; mistakes = 0; deck = shuffle(ITEMS);
+  nextRound();
+}
+
+function nextRound() {
+  round++;
+  const set = takeSet();
+  picked = null; matched = 0;
+  shelf.innerHTML = ""; rail.innerHTML = "";
+  win.hidden = true; fb.textContent = ""; fb.className = "feedback";
+  shuffle(set).forEach((item, n) => {
+    const b = document.createElement("button");
+    b.className = "pic"; b.dataset.word = item.word; b.dataset.kind = "pic";
+    b.setAttribute("aria-label", "Picture " + (n + 1));
+    b.innerHTML = item.svg + '<span class="caption"></span>';
+    shelf.appendChild(b);
+  });
+  shuffle(set).forEach(item => {
+    const t = document.createElement("button");
+    t.className = "tag"; t.dataset.word = item.word; t.dataset.kind = "tag";
+    t.textContent = item.word;
+    rail.appendChild(t);
+  });
+  updateScore();
+}
+
+function updateScore() { scoreEl.textContent = `Round ${round} / ${ROUNDS}`; }
+
+function roundDone() {
+  fb.textContent = "";
+  rail.innerHTML = "";
+  if (round < ROUNDS) {
+    const b = document.createElement("button");
+    b.className = "btn"; b.textContent = "Next round";
+    b.addEventListener("click", () => { nextRound(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+    rail.appendChild(b);
+    b.focus({ preventScroll: true });
+    b.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  } else {
+    winTitle.textContent = "Room finished! 🏠";
+    winText.textContent = `You matched ${ROUND * ROUNDS} words` + (mistakes === 0 ? " with no mistakes!" : ` with ${mistakes} ${mistakes === 1 ? "mistake" : "mistakes"}.`);
+    winBtn.textContent = "Play again";
+  }
+  win.hidden = false;
+  winBtn.focus({ preventScroll: true });
+  win.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function clearPick() { document.querySelectorAll(".selected").forEach(el => el.classList.remove("selected")); picked = null; }
+
+function handle(el) {
+  if (el.classList.contains("done") || !win.hidden) return;
+  if (!picked || picked.dataset.kind === el.dataset.kind) {
+    clearPick(); picked = el; el.classList.add("selected");
+    if (el.dataset.kind === "tag") say(el.dataset.word);
+    return;
+  }
+  const pic = el.dataset.kind === "pic" ? el : picked;
+  const tag = el.dataset.kind === "tag" ? el : picked;
+  if (pic.dataset.word === tag.dataset.word) {
+    pic.classList.add("done", "pop"); tag.classList.add("done");
+    pic.querySelector(".caption").textContent = pic.dataset.word;
+    pic.setAttribute("aria-label", pic.dataset.word + ", matched");
+    fb.textContent = "Yes! " + cap(pic.dataset.word) + "!"; fb.className = "feedback ok";
+    if (el.dataset.kind === "tag") say(pic.dataset.word);
+    matched++; updateScore(); clearPick();
+    if (matched === ROUND) setTimeout(roundDone, 600);
+  } else {
+    mistakes++;
+    [pic, tag].forEach(x => { x.classList.remove("shake"); void x.offsetWidth; x.classList.add("shake"); });
+    fb.textContent = "Try again!"; fb.className = "feedback no";
+    clearPick();
+  }
+}
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest(".pic, .tag");
+  if (el) handle(el);
+});
+document.addEventListener("animationend", (e) => e.target.classList.remove("shake", "pop"));
+winBtn.addEventListener("click", () => {
+  if (round < ROUNDS) nextRound(); else startGame();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+startGame();
+</script>
+
+</body>
+</html>
