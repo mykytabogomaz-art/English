@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Describe the Picture</title>
+<style>
+  :root{
+    --bg:#f4f1ea; --card:#fff; --ink:#1f2a37; --muted:#6b7280;
+    --accent:#2563eb; --good:#16a34a; --goodbg:#dcfce7; --bad:#dc2626; --badbg:#fee2e2;
+    --tile:#eef2ff; --tileb:#c7d2fe;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:20px}
+  .wrap{max-width:760px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+  h1{font-size:26px;margin:0}
+  .sub{color:var(--muted);font-size:16px;margin-top:2px}
+  .progress{font-weight:700;font-size:18px;white-space:nowrap}
+  .bar{height:10px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-bottom:14px}
+  .bar>div{height:100%;background:var(--accent);width:0;transition:width .3s}
+  .card{background:var(--card);border-radius:18px;box-shadow:0 4px 16px rgba(0,0,0,.08);overflow:hidden}
+  .photo{position:relative;background:#e5e7eb;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+  .photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo .fallback{font-size:120px;display:none}
+  .photo.failed img{display:none}.photo.failed .fallback{display:block}
+  .body{padding:18px}
+  .q{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:700;margin-bottom:4px}
+  .hint-uk{color:var(--muted);font-size:16px;margin-bottom:14px}
+  button{font:inherit;cursor:pointer;border:none;border-radius:12px;padding:12px 18px}
+  .say{background:var(--tile);border:2px solid var(--tileb);padding:6px 12px;font-size:20px}
+  input[type=text]{width:100%;font:inherit;font-size:24px;padding:14px 16px;border:3px solid #d1d5db;border-radius:14px;outline:none}
+  input[type=text]:focus{border-color:var(--accent)}
+  input.ok{border-color:var(--good);background:var(--goodbg)}
+  input.no{border-color:var(--bad);background:var(--badbg)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .primary{background:var(--accent);color:#fff;font-weight:700}
+  .secondary{background:#e5e7eb;color:var(--ink)}
+  .next{background:var(--good);color:#fff;font-weight:700}
+  .feedback{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:20px;display:none}
+  .feedback.ok{display:block;background:var(--goodbg);color:#14532d}
+  .feedback.no{display:block;background:var(--badbg);color:#7f1d1d}
+  .feedback .small{font-size:16px;opacity:.85;margin-top:4px}
+  .missing{display:inline-block;background:#fff;border:2px dashed var(--bad);border-radius:8px;padding:0 8px;margin:2px;font-weight:700}
+  .tiles{display:none;flex-wrap:wrap;gap:8px;margin-top:14px;padding:12px;background:#f9fafb;border-radius:12px}
+  .tiles.show{display:flex}
+  .tile{background:var(--tile);border:2px solid var(--tileb);font-size:22px;padding:8px 14px}
+  .tile.used{opacity:.3;pointer-events:none}
+  .done{text-align:center;padding:24px}
+  .done h2{font-size:30px;margin:6px 0}
+  .stars{font-size:34px;letter-spacing:2px}
+  .list{text-align:left;margin:18px 0;padding:0;list-style:none}
+  .list li{display:flex;align-items:center;gap:12px;padding:8px;border-bottom:1px solid #eee;font-size:20px}
+  .list img{width:72px;height:54px;object-fit:cover;border-radius:8px;flex:none;background:#e5e7eb}
+  .credit{color:var(--muted);font-size:13px;text-align:center;margin-top:14px}
+  .credit a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Describe the picture</h1>
+      <div class="sub">Look, say, then write a sentence. · Подивись, скажи, потім напиши речення.</div>
+    </div>
+    <div class="progress" id="progress">1 / 10</div>
+  </header>
+  <div class="bar"><div id="bar"></div></div>
+  <div class="card" id="card"></div>
+  <div class="credit">Photos: <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a> (Anita Jankovic, Goodfaces Agency, Wenhao Ruan, Jason Briscoe, Ryan Fleischer, Debra Brewster, Alex MacFaul, Johnny McClung, Nik, Vitaly Gariev)</div>
+</div>
+
+<script>
+const U = id => `https://images.unsplash.com/${id}?w=900&q=70&auto=format&fit=crop`;
+
+// Each "slot" is a list of accepted words; slots must appear in this order.
+const TASKS = [
+  { img:U("photo-1540151812223-c30b3fab58e6"), emoji:"📖", q:"What is the boy doing?", uk:"Що робить хлопчик?",
+    answer:"The boy is reading a book.", slots:[["boy"],["is"],["reading"],["book"]] },
+  { img:U("photo-1633113736240-5053f6080387"), emoji:"🍨", q:"What is the woman doing?", uk:"Що робить жінка?",
+    answer:"The woman is eating ice cream.", slots:[["woman","girl","lady"],["is"],["eating"],["ice","icecream"]] },
+  { img:U("photo-1760365366785-8c5805de3085"), emoji:"🚲", q:"What is the man doing?", uk:"Що робить чоловік?",
+    answer:"The man is riding a bike.", slots:[["man"],["is"],["riding","cycling"],["bike","bicycle"]] },
+  { img:U("photo-1556911220-e15b29be8c8f"), emoji:"🍳", q:"What is the woman doing?", uk:"Що робить жінка?",
+    answer:"The woman is cooking.", slots:[["woman","lady"],["is"],["cooking"]] },
+  { img:U("photo-1768084368558-0c4f68278309"), emoji:"🐕", q:"What is the dog doing?", uk:"Що робить собака?",
+    answer:"The dog is running.", slots:[["dog"],["is"],["running"]] },
+  { img:U("photo-1695054486205-e43fc0767dda"), emoji:"⚽", q:"What are the boys doing?", uk:"Що роблять хлопчики?",
+    answer:"The boys are playing football.", slots:[["boys","children","kids"],["are"],["playing"],["football","soccer"]] },
+  { img:U("photo-1559074070-e6a37115631e"), emoji:"🐈", q:"What is the cat doing?", uk:"Що робить кіт?",
+    answer:"The cat is sleeping.", slots:[["cat"],["is"],["sleeping"]] },
+  { img:U("photo-1529079337819-f6d0024bd364"), emoji:"🥛", q:"What is the girl doing?", uk:"Що робить дівчинка?",
+    answer:"The girl is drinking water.", slots:[["girl"],["is"],["drinking"],["water"]] },
+  { img:U("photo-1694678505383-676d78ea3b96"), emoji:"🚗", q:"What is the man doing?", uk:"Що робить чоловік?",
+    answer:"The man is washing the car.", slots:[["man"],["is"],["washing","cleaning"],["car"]] },
+  { img:U("photo-1758611975583-fddf609226a0"), emoji:"📱", q:"What is the woman doing?", uk:"Що робить жінка?",
+    answer:"The woman is talking on the phone.", slots:[["woman","lady"],["is"],["talking","speaking"],["phone"]] },
+];
+
+let i = 0, tries = 0, solved = false;
+const results = []; // true = first try
+
+/* ---------- speech ---------- */
+let voice = null;
+function pickVoice(){
+  const v = speechSynthesis.getVoices();
+  voice = v.find(x=>x.lang==="en-GB") || v.find(x=>x.lang && x.lang.startsWith("en")) || null;
+}
+if ("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function speak(text){
+  if (!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  if (voice) u.voice = voice; u.lang = voice ? voice.lang : "en-GB"; u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
+
+/* ---------- checking ---------- */
+function words(s){
+  return s.toLowerCase().replace(/[’`]/g,"'")
+    .replace(/(\w)'s\b/g,"$1 is").replace(/(\w)'re\b/g,"$1 are")
+    .replace(/[^a-z\s]/g," ").split(/\s+/).filter(Boolean);
+}
+function check(text, slots){
+  const w = words(text); let p = 0; const missing = [];
+  for (const slot of slots){
+    const k = w.slice(p).findIndex(x => slot.includes(x));
+    if (k === -1) missing.push(slot[0]); else p += k + 1;
+  }
+  return missing;
+}
+
+/* ---------- render ---------- */
+function shuffle(a){ a = a.slice(); for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]} return a; }
+
+function render(){
+  const t = TASKS[i]; tries = 0; solved = false;
+  document.getElementById("progress").textContent = `${i+1} / ${TASKS.length}`;
+  document.getElementById("bar").style.width = (i/TASKS.length*100)+"%";
+  const tiles = shuffle(t.answer.replace(/\.$/,"").split(" "));
+  document.getElementById("card").innerHTML = `
+    <div class="photo" id="photo">
+      <img src="${t.img}" alt="" onerror="document.getElementById('photo').classList.add('failed')">
+      <div class="fallback">${t.emoji}</div>
+    </div>
+    <div class="body">
+      <div class="q">${t.q} <button class="say" onclick="speak('${t.q.replace(/'/g,"\\'")}')" aria-label="Listen">🔊</button></div>
+      <div class="hint-uk">${t.uk} Write a full sentence. · Напиши повне речення.</div>
+      <input type="text" id="ans" placeholder="The ..." autocomplete="off" spellcheck="false" autocapitalize="sentences">
+      <div class="row">
+        <button class="primary" id="checkBtn" onclick="doCheck()">✔ Check</button>
+        <button class="secondary" onclick="toggleTiles()">💡 Help</button>
+        <button class="secondary" onclick="clearAns()">↺ Clear</button>
+      </div>
+      <div class="tiles" id="tiles">
+        ${tiles.map(w=>`<button class="tile" onclick="addWord(this)">${w}</button>`).join("")}
+      </div>
+      <div class="feedback" id="fb"></div>
+    </div>`;
+  const inp = document.getElementById("ans");
+  inp.addEventListener("keydown", e => { if (e.key==="Enter") solved ? next() : doCheck(); });
+  inp.addEventListener("input", () => inp.classList.remove("no"));
+  inp.focus();
+}
+
+function toggleTiles(){ document.getElementById("tiles").classList.toggle("show"); }
+function addWord(btn){
+  const inp = document.getElementById("ans");
+  inp.value = (inp.value.trim() ? inp.value.trim()+" " : "") + btn.textContent;
+  btn.classList.add("used"); inp.classList.remove("no"); inp.focus();
+}
+function clearAns(){
+  const inp = document.getElementById("ans"); inp.value=""; inp.className=""; inp.focus();
+  document.querySelectorAll(".tile").forEach(b=>b.classList.remove("used"));
+  document.getElementById("fb").className="feedback";
+}
+
+function doCheck(){
+  if (solved) return;
+  const t = TASKS[i], inp = document.getElementById("ans"), fb = document.getElementById("fb");
+  const text = inp.value.trim();
+  if (!text){ inp.focus(); return; }
+  tries++;
+  const missing = check(text, t.slots);
+  if (missing.length === 0){
+    solved = true; results[i] = (tries === 1);
+    inp.className = "ok"; inp.readOnly = true;
+    let tip = "";
+    if (!/^[A-Z]/.test(text)) tip = "Tip: start with a capital letter. · Почни з великої літери.";
+    else if (!/[.!]$/.test(text)) tip = "Tip: put a full stop at the end. · Постав крапку в кінці.";
+    fb.className = "feedback ok";
+    fb.innerHTML = `🎉 <b>Well done!</b> ${t.answer}${tip?`<div class="small">${tip}</div>`:""}`;
+    speak(t.answer);
+    const b = document.getElementById("checkBtn");
+    b.textContent = i < TASKS.length-1 ? "Next ➜" : "Finish ➜";
+    b.className = "next"; b.onclick = next;
+  } else {
+    inp.className = "no";
+    fb.className = "feedback no";
+    const hint = tries >= 3 ? `<div class="small">Answer · Відповідь: <b>${t.answer}</b></div>` : `<div class="small">Try again · Спробуй ще раз</div>`;
+    fb.innerHTML = `Almost! Missing word${missing.length>1?"s":""}: ${missing.map(m=>`<span class="missing">${m}</span>`).join(" ")}${hint}`;
+  }
+}
+
+function next(){
+  i++;
+  if (i < TASKS.length) render(); else finish();
+}
+
+function finish(){
+  document.getElementById("progress").textContent = `${TASKS.length} / ${TASKS.length}`;
+  document.getElementById("bar").style.width = "100%";
+  const first = results.filter(Boolean).length;
+  document.getElementById("card").innerHTML = `
+    <div class="done">
+      <div class="stars">${"⭐".repeat(first)}${"☆".repeat(TASKS.length-first)}</div>
+      <h2>Great work!</h2>
+      <div>${first} / ${TASKS.length} right first time · з першої спроби</div>
+      <ul class="list">
+        ${TASKS.map((t,k)=>`<li><img src="${t.img}" alt="" onerror="this.style.visibility='hidden'"><span>${results[k]?"✅":"✔️"} ${t.answer}</span></li>`).join("")}
+      </ul>
+      <div class="row" style="justify-content:center">
+        <button class="secondary" onclick="readAll()">🔊 Read all</button>
+        <button class="primary" onclick="restart()">↺ Start again</button>
+      </div>
+    </div>`;
+}
+function readAll(){ speak(TASKS.map(t=>t.answer).join(" ")); }
+function restart(){ i = 0; results.length = 0; render(); }
+
+render();
+</script>
+</body>
+</html>
